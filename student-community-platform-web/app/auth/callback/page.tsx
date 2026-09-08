@@ -46,7 +46,9 @@ export default function AuthCallback() {
     const ir = () => {
       if (hecho) return;
       hecho = true;
-      router.replace("/completar-perfil");
+      // Siempre al inicio; la portada manda a /completar-perfil solo si
+      // falta el onboarding.
+      router.replace("/");
     };
 
     // 1) ¿ya hay sesión? (el hash se procesa al llamar getSession)

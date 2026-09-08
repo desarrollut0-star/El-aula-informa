@@ -1,12 +1,27 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSesion } from "@/lib/sesion";
 import { AccesosRapidos } from "@/components/inicio/AccesosRapidos";
 import { MuroCliente } from "@/components/contenido/MuroCliente";
 
 export default function Portada() {
   const { estado, sesion } = useSesion();
+  const router = useRouter();
+
+  // Cuenta con sesión pero sin onboarding terminado → completar perfil.
+  const faltaOnboarding =
+    estado === "dentro" && sesion != null && (!sesion.programaId || !sesion.aceptoTerminos);
+
+  useEffect(() => {
+    if (faltaOnboarding) router.replace("/completar-perfil");
+  }, [faltaOnboarding, router]);
+
+  if (faltaOnboarding) {
+    return <p className="text-tinta-suave">Llevándote a completar tu perfil…</p>;
+  }
 
   // --- Visitante: solo información de la institución ---
   if (estado !== "dentro") {

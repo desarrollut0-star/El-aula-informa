@@ -69,7 +69,7 @@ export default function Acceso() {
       setError("Código incorrecto o vencido. Pide uno nuevo.");
       return;
     }
-    router.push("/completar-perfil");
+    router.push("/");
   }
 
   return (

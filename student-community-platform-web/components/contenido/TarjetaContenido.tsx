@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { TarjetaContenido as Tarjeta, TipoContenido } from "@/lib/tipos";
 import { api } from "@/lib/api-client";
@@ -41,7 +41,24 @@ export function TarjetaContenido({
   const [ocupado, setOcupado] = useState(false);
 
   const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [editando, setEditando] = useState(false);
+
+  useEffect(() => {
+    if (!menu) return;
+    function cerrar(ev: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(ev.target as Node)) setMenu(false);
+    }
+    function esc(ev: KeyboardEvent) {
+      if (ev.key === "Escape") setMenu(false);
+    }
+    document.addEventListener("mousedown", cerrar);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", cerrar);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [menu]);
   const [titulo, setTitulo] = useState(tarjeta.titulo ?? "");
   const [cuerpo, setCuerpo] = useState(tarjeta.cuerpo);
   const [textoVisible, setTextoVisible] = useState({ titulo: tarjeta.titulo, cuerpo: tarjeta.cuerpo });
@@ -135,7 +152,7 @@ export function TarjetaContenido({
         </span>
 
         {puedoGestionar && !editando && (
-          <div className="relative shrink-0">
+          <div ref={menuRef} className="relative shrink-0">
             <button
               onClick={() => setMenu((v) => !v)}
               className="rounded px-1.5 text-lg leading-none text-tinta-suave hover:bg-papel-alt"
