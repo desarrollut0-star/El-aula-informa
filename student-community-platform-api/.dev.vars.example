@@ -101,8 +101,16 @@ CLOUDINARY_API_SECRET=""
 
 
 # ---------------------------------------------------------------------
-#  MODERACIÓN AUTOMÁTICA (opcional, capa gratuita)
-#  Si se deja vacío, solo corre el filtro local de palabras_bloqueadas.
+#  MODERACIÓN AUTOMÁTICA POR IA (opcional pero recomendada, SIN COSTO)
+#  API de moderación de OpenAI (modelo omni-moderation-latest): detecta
+#  contenido sexual, acoso, discurso de odio y violencia. Esa API NO se
+#  cobra (es la única gratuita de OpenAI); solo pide una API key.
+#    1. Crear cuenta en https://platform.openai.com
+#    2. API keys -> Create new secret key -> pegar aquí (sk-...)
+#  Cómo se usa: al publicar / comentar / editar, el texto pasa primero
+#  por el filtro local (palabras_bloqueadas) y luego por esta API; si algo
+#  no pasa, se RECHAZA antes de guardarse (nunca aparece en el muro).
+#  Si se deja vacío, solo corre el filtro local.
 # ---------------------------------------------------------------------
 OPENAI_API_KEY=""
 

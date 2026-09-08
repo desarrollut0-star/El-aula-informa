@@ -13,9 +13,9 @@ export const moderacionModule: AppModule = {
      * Pasa cada contenido nuevo por el filtro automático. Si no pasa,
      * publica el veredicto — es `contenido` quien lo oculta (dueño del dato).
      */
-    async ContenidoPublicado(payload, { db }) {
+    async ContenidoPublicado(payload, { db, env }) {
       const servicio = new ModeracionService(db);
-      const resultado = await servicio.revisarTextoAutomatico(payload.cuerpo);
+      const resultado = await servicio.revisarTextoAutomatico(payload.cuerpo, env.OPENAI_API_KEY);
       if (resultado.aprobado) return;
       await servicio.registrarAccion(
         payload.contenidoId,

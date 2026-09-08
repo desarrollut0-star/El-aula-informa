@@ -3,7 +3,7 @@ import type { Db } from "../../../shared/db/client";
 import { reportesContenido, accionesModeracion } from "../schema";
 import { contenidos } from "../../contenido/schema";
 import { publish } from "../../../shared/events/bus";
-import { filtrarTextoLocal } from "./filtro-local";
+import { moderarTexto } from "./moderar";
 import type { MotivoReporte } from "./moderacion.types";
 
 const UMBRAL_AUTO_OCULTADO = 5;
@@ -11,9 +11,9 @@ const UMBRAL_AUTO_OCULTADO = 5;
 export class ModeracionService {
   constructor(private readonly db: Db) {}
 
-  /** Filtro local (tabla `palabras_bloqueadas`) + (pendiente) API externa gratuita. */
-  revisarTextoAutomatico(texto: string) {
-    return filtrarTextoLocal(this.db, texto);
+  /** Filtro local (tabla `palabras_bloqueadas`) + API de moderación de OpenAI. */
+  revisarTextoAutomatico(texto: string, openaiKey?: string) {
+    return moderarTexto(this.db, texto, { openaiKey });
   }
 
   async registrarAccion(

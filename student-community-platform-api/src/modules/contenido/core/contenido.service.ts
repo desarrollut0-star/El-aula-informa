@@ -4,12 +4,26 @@ import { TIPOS_SOLO_CUENTA_OFICIAL, TIPOS_CON_FLUJO_PROPIO, type TipoContenido }
 import { publish } from "../../../shared/events/bus";
 import { AppError } from "../../../shared/http/error";
 import { asegurarLimiteDiario } from "./limite-diario";
+import { moderarTexto, mensajeRechazo } from "../../moderacion/core/moderar";
 
 export class ContenidoService {
   private readonly repo: ContenidoRepository;
 
-  constructor(private readonly db: Db) {
+  constructor(
+    private readonly db: Db,
+    private readonly openaiKey?: string,
+  ) {
     this.repo = new ContenidoRepository(db);
+  }
+
+  /** Revisión automática síncrona; lanza 422 si el texto no pasa. */
+  private async revisar(...textos: (string | null | undefined)[]) {
+    const texto = textos.filter(Boolean).join("\n");
+    if (!texto) return;
+    const r = await moderarTexto(this.db, texto, { openaiKey: this.openaiKey });
+    if (!r.aprobado) {
+      throw new AppError(422, "CONTENIDO_RECHAZADO", mensajeRechazo(r.motivo));
+    }
   }
 
   puedePublicar(tipo: TipoContenido, esCuentaOficial: boolean): boolean {
@@ -35,6 +49,7 @@ export class ContenidoService {
     if (input.cuerpo.trim().length === 0) {
       throw new AppError(400, "CUERPO_VACIO", "El contenido no puede estar vacío.");
     }
+    await this.revisar(input.titulo, input.cuerpo);
     await asegurarLimiteDiario(this.db, input.autorId, input.esCuentaOficial);
 
     const contenido = await this.repo.crear(input);
@@ -67,6 +82,7 @@ export class ContenidoService {
     if (campos.cuerpo !== undefined && campos.cuerpo.trim().length === 0) {
       throw new AppError(400, "CUERPO_VACIO", "El contenido no puede quedar vacío.");
     }
+    await this.revisar(campos.titulo, campos.cuerpo);
     const fila = await this.repo.editar(id, autorId, campos);
     if (!fila) throw new AppError(404, "NO_ENCONTRADO", "No encontramos esa publicación tuya.");
     return fila;
@@ -96,6 +112,7 @@ export class ContenidoService {
     if (cuerpo.trim().length === 0) {
       throw new AppError(400, "CUERPO_VACIO", "El comentario no puede quedar vacío.");
     }
+    await this.revisar(cuerpo);
     const fila = await this.repo.editarComentario(id, autorId, cuerpo.trim());
     if (!fila) throw new AppError(404, "NO_ENCONTRADO", "No encontramos ese comentario tuyo.");
     return fila;
@@ -117,6 +134,7 @@ export class ContenidoService {
     if (input.cuerpo.trim().length === 0) {
       throw new AppError(400, "CUERPO_VACIO", "El comentario no puede estar vacío.");
     }
+    await this.revisar(input.cuerpo);
     // Confirma que la tarjeta existe y es visible (porId lanza 404 si no).
     await this.repo.porId(input.contenidoId, input.autorId);
     // Si es respuesta, el padre debe ser un comentario raíz de esta misma tarjeta.

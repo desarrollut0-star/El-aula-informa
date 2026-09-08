@@ -42,7 +42,7 @@ const editarComentarioSchema = z.object({ cuerpo: z.string().min(1).max(2000) })
 contenidoRoutes.post("/", requireRole(), validarJson(publicarSchema), async (c) => {
   const session = c.get("session")!;
   const d = c.req.valid("json");
-  const contenido = await new ContenidoService(c.get("db")).publicar({
+  const contenido = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).publicar({
     tipo: d.tipo,
     autorId: session.usuarioId,
     programaId: session.programaId,
@@ -64,7 +64,7 @@ contenidoRoutes.get("/feed", requireSesion(), async (c) => {
   const cursorFecha = c.req.query("cursorFecha");
   const cursorId = c.req.query("cursorId");
   const cursor = cursorFecha && cursorId ? { fecha: cursorFecha, id: cursorId } : undefined;
-  const tarjetas = await new ContenidoService(c.get("db")).feed({ usuarioId: session.usuarioId, tipo, cursor });
+  const tarjetas = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).feed({ usuarioId: session.usuarioId, tipo, cursor });
   return c.json({ tarjetas });
 });
 
@@ -77,28 +77,28 @@ contenidoRoutes.get("/limite", requireSesion(), async (c) => {
 /** Lo que YO he publicado, con su estado. */
 contenidoRoutes.get("/mias", requireSesion(), async (c) => {
   const session = c.get("session")!;
-  const publicaciones = await new ContenidoService(c.get("db")).mias(session.usuarioId);
+  const publicaciones = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).mias(session.usuarioId);
   return c.json({ publicaciones });
 });
 
 /** Vista swiper: testimonios que este usuario no ha reaccionado. */
 contenidoRoutes.get("/swiper", requireRole(), async (c) => {
   const session = c.get("session")!;
-  const tarjetas = await new ContenidoService(c.get("db")).siguientesParaSwiper(session.usuarioId);
+  const tarjetas = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).siguientesParaSwiper(session.usuarioId);
   return c.json({ tarjetas });
 });
 
 contenidoRoutes.post("/reacciones", requireRole(), validarJson(reaccionSchema), async (c) => {
   const session = c.get("session")!;
   const { contenidoId, aFavor } = c.req.valid("json");
-  const resultado = await new ContenidoService(c.get("db")).reaccionar(session.usuarioId, contenidoId, aFavor);
+  const resultado = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).reaccionar(session.usuarioId, contenidoId, aFavor);
   return c.json(resultado);
 });
 
 /** Detalle de una tarjeta. */
 contenidoRoutes.get("/:id", requireSesion(), async (c) => {
   const session = c.get("session")!;
-  const tarjeta = await new ContenidoService(c.get("db")).porId(c.req.param("id"), session.usuarioId);
+  const tarjeta = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).porId(c.req.param("id"), session.usuarioId);
   return c.json({ tarjeta });
 });
 
@@ -106,7 +106,7 @@ contenidoRoutes.get("/:id", requireSesion(), async (c) => {
 contenidoRoutes.patch("/:id", requireRole(), validarJson(editarSchema), async (c) => {
   const session = c.get("session")!;
   const d = c.req.valid("json");
-  const fila = await new ContenidoService(c.get("db")).editar(c.req.param("id"), session.usuarioId, {
+  const fila = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).editar(c.req.param("id"), session.usuarioId, {
     titulo: d.titulo,
     cuerpo: d.cuerpo,
     lugar: d.lugar,
@@ -118,14 +118,14 @@ contenidoRoutes.patch("/:id", requireRole(), validarJson(editarSchema), async (c
 /** Borrar la propia publicación. */
 contenidoRoutes.delete("/:id", requireRole(), async (c) => {
   const session = c.get("session")!;
-  const r = await new ContenidoService(c.get("db")).eliminar(c.req.param("id"), session.usuarioId);
+  const r = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).eliminar(c.req.param("id"), session.usuarioId);
   return c.json(r);
 });
 
 /** Hilo de comentarios de una tarjeta. */
 contenidoRoutes.get("/:id/comentarios", requireSesion(), async (c) => {
   const session = c.get("session")!;
-  const comentarios = await new ContenidoService(c.get("db")).comentarios(c.req.param("id"), session.usuarioId);
+  const comentarios = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).comentarios(c.req.param("id"), session.usuarioId);
   return c.json({ comentarios });
 });
 
@@ -133,7 +133,7 @@ contenidoRoutes.get("/:id/comentarios", requireSesion(), async (c) => {
 contenidoRoutes.post("/:id/comentarios", requireRole(), validarJson(comentarSchema), async (c) => {
   const session = c.get("session")!;
   const { cuerpo, padreId } = c.req.valid("json");
-  const comentario = await new ContenidoService(c.get("db")).comentar({
+  const comentario = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).comentar({
     contenidoId: c.req.param("id"),
     autorId: session.usuarioId,
     esCuentaOficial: session.esCuentaOficial,
@@ -146,7 +146,7 @@ contenidoRoutes.post("/:id/comentarios", requireRole(), validarJson(comentarSche
 /** Editar el propio comentario. */
 contenidoRoutes.patch("/:id/comentarios/:cid", requireRole(), validarJson(editarComentarioSchema), async (c) => {
   const session = c.get("session")!;
-  const fila = await new ContenidoService(c.get("db")).editarComentario(
+  const fila = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).editarComentario(
     c.req.param("cid"),
     session.usuarioId,
     c.req.valid("json").cuerpo,
@@ -157,6 +157,6 @@ contenidoRoutes.patch("/:id/comentarios/:cid", requireRole(), validarJson(editar
 /** Borrar el propio comentario. */
 contenidoRoutes.delete("/:id/comentarios/:cid", requireRole(), async (c) => {
   const session = c.get("session")!;
-  const r = await new ContenidoService(c.get("db")).eliminarComentario(c.req.param("cid"), session.usuarioId);
+  const r = await new ContenidoService(c.get("db"), c.env.OPENAI_API_KEY).eliminarComentario(c.req.param("cid"), session.usuarioId);
   return c.json(r);
 });
