@@ -117,6 +117,10 @@ export class ContenidoService {
     }
     // Confirma que la tarjeta existe y es visible (porId lanza 404 si no).
     await this.repo.porId(input.contenidoId, input.autorId);
+    // Si es respuesta, el padre debe ser un comentario raíz de esta misma tarjeta.
+    if (input.padreId && !(await this.repo.padreValido(input.padreId, input.contenidoId))) {
+      throw new AppError(400, "PADRE_INVALIDO", "No se puede responder a ese comentario.");
+    }
     return this.repo.comentar({
       contenidoId: input.contenidoId,
       autorId: input.autorId,

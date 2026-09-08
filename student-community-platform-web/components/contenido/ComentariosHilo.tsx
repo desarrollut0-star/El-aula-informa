@@ -42,15 +42,15 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
     }
   }
 
-  function reemplazar(c: TComentario) {
+  const agregar = (c: TComentario) => setLista((prev) => [...(prev ?? []), c]);
+  const reemplazar = (c: TComentario) =>
     setLista((prev) => (prev ?? []).map((x) => (x.id === c.id ? c : x)));
-  }
-  function quitar(id: string) {
-    setLista((prev) => (prev ?? []).filter((x) => x.id !== id));
-  }
+  const quitar = (id: string) =>
+    setLista((prev) => (prev ?? []).filter((x) => x.id !== id && x.padreId !== id));
 
   const raiz = (lista ?? []).filter((c) => !c.padreId);
-  const respuestasDe = (id: string) => (lista ?? []).filter((c) => c.padreId === id);
+  const respuestasDe = (id: string) =>
+    (lista ?? []).filter((c) => c.padreId === id).sort((a, b) => a.creadoEn.localeCompare(b.creadoEn));
 
   return (
     <section className="flex flex-col gap-4">
@@ -82,15 +82,31 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
       ) : raiz.length === 0 ? (
         <p className="text-tinta-suave">Todavía no hay comentarios. Sé el primero.</p>
       ) : (
-        <ul className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-5">
           {raiz.map((c) => (
             <li key={c.id}>
-              <Comentario c={c} contenidoId={contenidoId} onEditado={reemplazar} onEliminado={quitar} />
+              <Comentario
+                c={c}
+                raizId={c.id}
+                contenidoId={contenidoId}
+                puedeInteractuar={puedeInteractuar}
+                onNueva={agregar}
+                onEditado={reemplazar}
+                onEliminado={quitar}
+              />
               {respuestasDe(c.id).length > 0 && (
                 <ul className="mt-3 flex flex-col gap-3 border-l-2 border-borde pl-4">
                   {respuestasDe(c.id).map((r) => (
                     <li key={r.id}>
-                      <Comentario c={r} contenidoId={contenidoId} onEditado={reemplazar} onEliminado={quitar} />
+                      <Comentario
+                        c={r}
+                        raizId={c.id}
+                        contenidoId={contenidoId}
+                        puedeInteractuar={puedeInteractuar}
+                        onNueva={agregar}
+                        onEditado={reemplazar}
+                        onEliminado={quitar}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -105,17 +121,27 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
 
 function Comentario({
   c,
+  raizId,
   contenidoId,
+  puedeInteractuar,
+  onNueva,
   onEditado,
   onEliminado,
 }: {
   c: TComentario;
+  /** Comentario raíz del hilo (las respuestas se cuelgan siempre de él). */
+  raizId: string;
   contenidoId: string;
+  puedeInteractuar: boolean;
+  onNueva: (c: TComentario) => void;
   onEditado: (c: TComentario) => void;
   onEliminado: (id: string) => void;
 }) {
+  const esRespuesta = Boolean(c.padreId);
   const [editando, setEditando] = useState(false);
+  const [respondiendo, setRespondiendo] = useState(false);
   const [texto, setTexto] = useState(c.cuerpo);
+  const [respuesta, setRespuesta] = useState("");
   const [ocupado, setOcupado] = useState(false);
 
   async function guardar() {
@@ -140,6 +166,27 @@ function Comentario({
     } catch {
       setOcupado(false);
     }
+  }
+
+  async function enviarRespuesta() {
+    if (!respuesta.trim()) return;
+    setOcupado(true);
+    try {
+      const nueva = await api.comentar(contenidoId, respuesta.trim(), raizId);
+      onNueva(nueva);
+      setRespuesta("");
+      setRespondiendo(false);
+    } catch {
+      /* noop */
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function abrirRespuesta() {
+    // Al responder a una respuesta, prellenamos con @alias para no perder el hilo.
+    setRespuesta(esRespuesta && !c.autorOficial ? `@${c.autorAlias} ` : "");
+    setRespondiendo(true);
   }
 
   return (
@@ -179,17 +226,46 @@ function Comentario({
         ) : (
           <>
             <p className="mt-1 whitespace-pre-line text-sm text-tinta">{c.cuerpo}</p>
-            {c.esMio && (
-              <div className="mt-1 flex gap-3 text-xs">
-                <button onClick={() => setEditando(true)} className="text-tinta-suave underline hover:text-verde">
-                  Editar
+            <div className="mt-1 flex flex-wrap gap-3 text-xs">
+              {puedeInteractuar && (
+                <button onClick={abrirRespuesta} className="text-tinta-suave underline hover:text-verde">
+                  Responder
                 </button>
-                <button onClick={eliminar} disabled={ocupado} className="text-terracota underline">
-                  Eliminar
-                </button>
-              </div>
-            )}
+              )}
+              {c.esMio && (
+                <>
+                  <button onClick={() => setEditando(true)} className="text-tinta-suave underline hover:text-verde">
+                    Editar
+                  </button>
+                  <button onClick={eliminar} disabled={ocupado} className="text-terracota underline">
+                    Eliminar
+                  </button>
+                </>
+              )}
+            </div>
           </>
+        )}
+
+        {respondiendo && (
+          <div className="mt-2 flex flex-col gap-2">
+            <textarea
+              autoFocus
+              value={respuesta}
+              onChange={(ev) => setRespuesta(ev.target.value)}
+              rows={2}
+              maxLength={2000}
+              placeholder={`Responder a ${c.autorOficial ? "Sociedad Estudiantil" : c.autorAlias}…`}
+              className="border border-borde bg-blanco-papel px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <Boton onClick={enviarRespuesta} disabled={ocupado || !respuesta.trim()}>
+                {ocupado ? "Enviando…" : "Responder"}
+              </Boton>
+              <Boton variante="secundario" onClick={() => { setRespondiendo(false); setRespuesta(""); }}>
+                Cancelar
+              </Boton>
+            </div>
+          </div>
         )}
       </div>
     </div>

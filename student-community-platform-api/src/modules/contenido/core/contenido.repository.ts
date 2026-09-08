@@ -224,6 +224,23 @@ export class ContenidoRepository {
       .limit(200);
   }
 
+  /** El comentario padre existe, está visible, es de esta tarjeta y es raíz. */
+  async padreValido(padreId: string, contenidoId: string) {
+    const [p] = await this.db
+      .select({ padreId: comentarios.padreId })
+      .from(comentarios)
+      .where(
+        and(
+          eq(comentarios.id, padreId),
+          eq(comentarios.contenidoId, contenidoId),
+          eq(comentarios.estado, "visible"),
+          isNull(comentarios.eliminadoEn),
+        ),
+      )
+      .limit(1);
+    return Boolean(p) && p.padreId === null;
+  }
+
   async comentar(input: {
     contenidoId: string;
     autorId: string;
