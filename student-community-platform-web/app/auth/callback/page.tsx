@@ -4,20 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { api } from "@/lib/api-client";
 
 const DOMINIO = process.env.NEXT_PUBLIC_INSTITUTIONAL_EMAIL_DOMAIN ?? "uthh.edu.mx";
 
 /**
- * Vuelta de Google SSO.
+ * Vuelta de Google SSO. En cuanto supabase-js tiene la sesión (del hash o
+ * ya persistida) mandamos a /completar-perfil — ahí el SesionProvider y la
+ * página consultan al backend. NO bloqueamos la navegación esperando al
+ * backend: eso hacía que se viera "congelado".
  *
- * Quién puede entrar lo decide la BASE DE DATOS (trigger fn_auth_validar_dominio:
- * @uthh.edu.mx o lista blanca privado.cuentas_autorizadas). Aquí NO filtramos por
- * dominio: si la base rechazó el alta, Supabase lo devuelve como error en la URL;
- * si el alta pasó pero el backend no reconoce la cuenta, cerramos sesión.
- *
- * La cuenta nace con alias seudónimo (alumno_xxxxxxx), NO con el nombre de
- * Google — es el modelo de anonimato del muro. Por eso vamos a /completar-perfil.
+ * El filtro de dominio lo hace el trigger de la base; si rechazó el alta,
+ * Supabase devuelve el error en la URL y lo mostramos aquí.
  */
 function leerError(): string | null {
   const q = new URLSearchParams(window.location.search);
@@ -25,12 +22,11 @@ function leerError(): string | null {
   const code = q.get("error") ?? h.get("error");
   const desc = (q.get("error_description") ?? h.get("error_description") ?? "").toLowerCase();
   if (!code) return null;
-
   if (/database error saving new user|not authorized|dominio|institucional/.test(desc)) {
     return `Esa cuenta no está autorizada. Entra con tu correo institucional (@${DOMINIO}).`;
   }
   if (code === "access_denied") {
-    return "Acceso cancelado o bloqueado por el administrador de tu Workspace. Si el problema persiste, avísale a Sistemas de la UTHH.";
+    return "Acceso cancelado o bloqueado por el administrador de tu Workspace. Si sigue, avísale a Sistemas de la UTHH.";
   }
   return "No se completó el acceso con Google. Vuelve a intentarlo.";
 }
@@ -46,46 +42,31 @@ export default function AuthCallback() {
       return;
     }
 
-    let cancelado = false;
+    let hecho = false;
+    const ir = () => {
+      if (hecho) return;
+      hecho = true;
+      router.replace("/completar-perfil");
+    };
 
-    async function backendReconoceLaCuenta(): Promise<boolean> {
-      for (let i = 0; i < 4 && !cancelado; i++) {
-        try {
-          const { session } = await api.sesion();
-          if (session) return true;
-        } catch {
-          /* el backend puede tardar en ver el token recién emitido */
-        }
-        await new Promise((r) => setTimeout(r, 700));
-      }
-      return false;
-    }
+    // 1) ¿ya hay sesión? (el hash se procesa al llamar getSession)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) ir();
+    });
 
-    async function resolver() {
-      // Espera a que supabase-js procese los tokens del hash.
-      let sesion = (await supabase.auth.getSession()).data.session;
-      for (let i = 0; i < 5 && !sesion && !cancelado; i++) {
-        await new Promise((r) => setTimeout(r, 500));
-        sesion = (await supabase.auth.getSession()).data.session;
-      }
-      if (cancelado) return;
-      if (!sesion) {
-        setError(leerError() ?? "No se pudo iniciar sesión. Vuelve a intentarlo.");
-        return;
-      }
-      if (await backendReconoceLaCuenta()) {
-        if (!cancelado) router.replace("/completar-perfil");
-        return;
-      }
-      await supabase.auth.signOut();
-      if (!cancelado) {
-        setError(`Tu cuenta no está autorizada para El Aula Informa. Entra con tu correo institucional (@${DOMINIO}).`);
-      }
-    }
+    // 2) o en cuanto supabase-js la establezca
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session) ir();
+    });
 
-    void resolver();
+    // 3) si en 5 s no llegó nada, algo falló
+    const t = setTimeout(() => {
+      if (!hecho) setError(leerError() ?? "No se pudo iniciar sesión. Vuelve a intentarlo.");
+    }, 5000);
+
     return () => {
-      cancelado = true;
+      sub.subscription.unsubscribe();
+      clearTimeout(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -95,9 +76,7 @@ export default function AuthCallback() {
       {error ? (
         <>
           <p className="text-sm text-terracota">{error}</p>
-          <Link href="/acceso" className="mt-4 inline-block text-sm underline">
-            Volver al acceso
-          </Link>
+          <Link href="/acceso" className="mt-4 inline-block text-sm underline">Volver al acceso</Link>
         </>
       ) : (
         <p className="text-sm text-tinta-suave">Iniciando sesión…</p>

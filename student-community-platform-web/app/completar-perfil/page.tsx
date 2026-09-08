@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
+import { useSesion } from "@/lib/sesion";
 import { Boton } from "@/components/ui/Boton";
 import type { Programa } from "@/lib/tipos";
 
@@ -14,25 +15,35 @@ import type { Programa } from "@/lib/tipos";
  */
 export default function CompletarPerfil() {
   const router = useRouter();
+  const { refrescar } = useSesion();
   const [programas, setProgramas] = useState<Programa[]>([]);
   const [programaId, setProgramaId] = useState("");
   const [acepta, setAcepta] = useState(false);
   const [version, setVersion] = useState("");
   const [yaAcepto, setYaAcepto] = useState(false);
   const [yaTienePrograma, setYaTienePrograma] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api.programas().then((r) => setProgramas(r.programas)).catch(() => setProgramas([]));
-    api.sesion().then((r) => {
-      setVersion(r.versionTerminos);
-      if (r.session) {
-        setYaAcepto(r.session.aceptoTerminos);
-        setYaTienePrograma(Boolean(r.session.programaId));
-        if (r.session.programaId) setProgramaId(r.session.programaId);
-      }
-    }).catch(() => {});
-  }, []);
+    api.sesion()
+      .then((r) => {
+        setVersion(r.versionTerminos);
+        if (r.session) {
+          // Ya tiene todo → no hace falta onboarding.
+          if (r.session.programaId && r.session.aceptoTerminos) {
+            router.replace("/");
+            return;
+          }
+          setYaAcepto(r.session.aceptoTerminos);
+          setYaTienePrograma(Boolean(r.session.programaId));
+          if (r.session.programaId) setProgramaId(r.session.programaId);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCargando(false));
+  }, [router]);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -40,10 +51,15 @@ export default function CompletarPerfil() {
     try {
       if (!yaTienePrograma) await api.completarPerfil(programaId);
       if (!yaAcepto) await api.aceptarTerminos(version);
-      router.push("/yo");
+      await refrescar();
+      router.push("/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo guardar. ¿Iniciaste sesión?");
     }
+  }
+
+  if (cargando) {
+    return <p className="mx-auto max-w-sm text-tinta-suave">Cargando…</p>;
   }
 
   const puedeEnviar = (yaTienePrograma || programaId) && (yaAcepto || acepta);

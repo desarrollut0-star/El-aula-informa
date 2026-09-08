@@ -60,9 +60,9 @@ contenidoRoutes.post("/", requireRole(), validarJson(publicarSchema), async (c) 
 contenidoRoutes.get("/feed", requireSesion(), async (c) => {
   const session = c.get("session")!;
   const tipo = c.req.query("tipo") as TipoContenido | undefined;
-  const cursorScore = c.req.query("cursorScore");
+  const cursorFecha = c.req.query("cursorFecha");
   const cursorId = c.req.query("cursorId");
-  const cursor = cursorScore && cursorId ? { score: Number(cursorScore), id: cursorId } : undefined;
+  const cursor = cursorFecha && cursorId ? { fecha: cursorFecha, id: cursorId } : undefined;
   const tarjetas = await new ContenidoService(c.get("db")).feed({ usuarioId: session.usuarioId, tipo, cursor });
   return c.json({ tarjetas });
 });

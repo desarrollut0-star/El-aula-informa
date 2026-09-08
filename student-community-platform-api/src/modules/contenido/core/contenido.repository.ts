@@ -73,11 +73,15 @@ export class ContenidoRepository {
     return fila;
   }
 
-  /** Feed unificado: cursor (score, id), rankeado. Fijados primero. */
+  /**
+   * Feed unificado en orden cronológico (más reciente primero), con cursor
+   * (creado_en, id) para el scroll infinito. El frontend agrupa por día.
+   * Los fijados conservan su etiqueta pero no se sacan de su lugar temporal.
+   */
   async feed(opciones: {
     usuarioId: string;
     tipo?: TipoContenido;
-    cursor?: { score: number; id: string };
+    cursor?: { fecha: string; id: string };
     limite?: number;
   }) {
     const { usuarioId, tipo, cursor, limite = 20 } = opciones;
@@ -88,10 +92,12 @@ export class ContenidoRepository {
       .where(
         and(
           tipo ? eq(vistaMuro.tipo, tipo) : undefined,
-          cursor ? sql`(${vistaMuro.score}, ${vistaMuro.id}) < (${cursor.score}, ${cursor.id})` : undefined,
+          cursor
+            ? sql`(${vistaMuro.creadoEn}, ${vistaMuro.id}) < (${cursor.fecha}::timestamptz, ${cursor.id}::uuid)`
+            : undefined,
         ),
       )
-      .orderBy(desc(vistaMuro.fijado), desc(vistaMuro.score), desc(vistaMuro.id))
+      .orderBy(desc(vistaMuro.creadoEn), desc(vistaMuro.id))
       .limit(limite);
   }
 

@@ -4,27 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui/Boton";
 import { supabase } from "@/lib/supabase";
-import { api } from "@/lib/api-client";
 
 const DOMINIO = process.env.NEXT_PUBLIC_INSTITUTIONAL_EMAIL_DOMAIN ?? "uthh.edu.mx";
 
 /**
  * Quién puede entrar lo decide la BASE DE DATOS (trigger fn_auth_validar_dominio:
  * @uthh.edu.mx o lista blanca privado.cuentas_autorizadas). El frontend NO
- * filtra por dominio — solo entra si el backend reconoce la cuenta.
+ * filtra por dominio: tras autenticar vamos directo a /completar-perfil y ahí
+ * el backend decide (si no reconoce la cuenta, cae al modo visitante).
  */
-async function backendReconoceLaCuenta(): Promise<boolean> {
-  for (let intento = 0; intento < 3; intento++) {
-    try {
-      const { session } = await api.sesion();
-      if (session) return true;
-    } catch {
-      /* el backend puede tardar en ver el token recién emitido */
-    }
-    await new Promise((r) => setTimeout(r, 700));
-  }
-  return false;
-}
 
 export default function Acceso() {
   const router = useRouter();
@@ -76,18 +64,12 @@ export default function Acceso() {
     setError(null);
     setCargando(true);
     const { error } = await supabase.auth.verifyOtp({ email: correo, token: codigo, type: "email" });
+    setCargando(false);
     if (error) {
-      setCargando(false);
       setError("Código incorrecto o vencido. Pide uno nuevo.");
       return;
     }
-    if (await backendReconoceLaCuenta()) {
-      router.push("/completar-perfil");
-      return;
-    }
-    await supabase.auth.signOut();
-    setCargando(false);
-    setError(`Tu cuenta no está autorizada para El Aula Informa. Usa tu correo institucional (@${DOMINIO}).`);
+    router.push("/completar-perfil");
   }
 
   return (

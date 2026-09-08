@@ -43,7 +43,7 @@ export class ContenidoService {
     return contenido;
   }
 
-  feed(opciones: { usuarioId: string; tipo?: TipoContenido; cursor?: { score: number; id: string } }) {
+  feed(opciones: { usuarioId: string; tipo?: TipoContenido; cursor?: { fecha: string; id: string } }) {
     return this.repo.feed(opciones);
   }
 

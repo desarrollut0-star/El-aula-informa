@@ -11,6 +11,23 @@ export function haceCuanto(iso: string): string {
   return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
+/** Etiqueta de día para agrupar el muro: "Hoy", "Ayer" o "12 de septiembre". */
+export function etiquetaDia(iso: string): string {
+  const d = new Date(iso);
+  const hoy = new Date();
+  const ayer = new Date();
+  ayer.setDate(hoy.getDate() - 1);
+  const mismoDia = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (mismoDia(d, hoy)) return "Hoy";
+  if (mismoDia(d, ayer)) return "Ayer";
+  const opts: Intl.DateTimeFormatOptions =
+    d.getFullYear() === hoy.getFullYear()
+      ? { day: "numeric", month: "long" }
+      : { day: "numeric", month: "long", year: "numeric" };
+  return d.toLocaleDateString("es-MX", opts);
+}
+
 /** Fecha + hora de un evento: "vie 12 sep · 10:00". */
 export function fechaEvento(iso: string): string {
   return new Date(iso).toLocaleString("es-MX", {

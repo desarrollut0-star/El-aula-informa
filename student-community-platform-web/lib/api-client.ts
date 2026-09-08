@@ -30,12 +30,28 @@ async function encabezadosDeSesion(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/** Corta cualquier petición que tarde más de esto (backend caído/lento). */
+const TIMEOUT_MS = 10_000;
+
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${ruta}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(await encabezadosDeSesion()), ...init?.headers },
-    cache: "no-store",
-  });
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${ruta}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(await encabezadosDeSesion()), ...init?.headers },
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new ApiError(0, "El servidor no respondió a tiempo. Revisa tu conexión o inténtalo de nuevo.");
+    }
+    throw new ApiError(0, "No se pudo contactar al servidor.");
+  } finally {
+    clearTimeout(t);
+  }
   if (!res.ok) {
     const cuerpo = await res.json().catch(() => null);
     throw new ApiError(res.status, cuerpo?.error?.mensaje ?? `Error ${res.status}`);
@@ -53,11 +69,11 @@ export const api = {
     pedir<{ ok: true }>("/identidad/aceptar-terminos", { method: "POST", body: JSON.stringify({ version }) }),
 
   // ---------- muro unificado (contenidos) ----------
-  feed: (opts?: { tipo?: TipoContenido; cursor?: { score: number; id: string } }) => {
+  feed: (opts?: { tipo?: TipoContenido; cursor?: { fecha: string; id: string } }) => {
     const p = new URLSearchParams();
     if (opts?.tipo) p.set("tipo", opts.tipo);
     if (opts?.cursor) {
-      p.set("cursorScore", String(opts.cursor.score));
+      p.set("cursorFecha", opts.cursor.fecha);
       p.set("cursorId", opts.cursor.id);
     }
     const qs = p.toString();
