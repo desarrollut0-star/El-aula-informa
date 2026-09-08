@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Comentario } from "@/lib/tipos";
+import type { Comentario as TComentario } from "@/lib/tipos";
 import { api, ApiError } from "@/lib/api-client";
 import { useSesion } from "@/lib/sesion";
 import { haceCuanto } from "@/lib/fechas";
@@ -10,7 +10,7 @@ import { Boton } from "@/components/ui/Boton";
 
 export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
   const { puedeInteractuar } = useSesion();
-  const [lista, setLista] = useState<Comentario[] | null>(null);
+  const [lista, setLista] = useState<TComentario[] | null>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +42,13 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
     }
   }
 
+  function reemplazar(c: TComentario) {
+    setLista((prev) => (prev ?? []).map((x) => (x.id === c.id ? c : x)));
+  }
+  function quitar(id: string) {
+    setLista((prev) => (prev ?? []).filter((x) => x.id !== id));
+  }
+
   const raiz = (lista ?? []).filter((c) => !c.padreId);
   const respuestasDe = (id: string) => (lista ?? []).filter((c) => c.padreId === id);
 
@@ -67,9 +74,7 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
           </div>
         </form>
       ) : (
-        <p className="text-sm text-tinta-suave">
-          Inicia sesión con tu cuenta verificada para comentar.
-        </p>
+        <p className="text-sm text-tinta-suave">Inicia sesión con tu cuenta verificada para comentar.</p>
       )}
 
       {lista === null ? (
@@ -80,12 +85,12 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
         <ul className="flex flex-col gap-4">
           {raiz.map((c) => (
             <li key={c.id}>
-              <Comentario c={c} />
+              <Comentario c={c} contenidoId={contenidoId} onEditado={reemplazar} onEliminado={quitar} />
               {respuestasDe(c.id).length > 0 && (
                 <ul className="mt-3 flex flex-col gap-3 border-l-2 border-borde pl-4">
                   {respuestasDe(c.id).map((r) => (
                     <li key={r.id}>
-                      <Comentario c={r} />
+                      <Comentario c={r} contenidoId={contenidoId} onEditado={reemplazar} onEliminado={quitar} />
                     </li>
                   ))}
                 </ul>
@@ -98,7 +103,45 @@ export function ComentariosHilo({ contenidoId }: { contenidoId: string }) {
   );
 }
 
-function Comentario({ c }: { c: Comentario }) {
+function Comentario({
+  c,
+  contenidoId,
+  onEditado,
+  onEliminado,
+}: {
+  c: TComentario;
+  contenidoId: string;
+  onEditado: (c: TComentario) => void;
+  onEliminado: (id: string) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(c.cuerpo);
+  const [ocupado, setOcupado] = useState(false);
+
+  async function guardar() {
+    setOcupado(true);
+    try {
+      const actualizado = await api.editarComentario(contenidoId, c.id, texto.trim());
+      onEditado({ ...c, ...actualizado, esMio: true });
+      setEditando(false);
+    } catch {
+      /* noop */
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function eliminar() {
+    if (!confirm("¿Eliminar tu comentario?")) return;
+    setOcupado(true);
+    try {
+      await api.eliminarComentario(contenidoId, c.id);
+      onEliminado(c.id);
+    } catch {
+      setOcupado(false);
+    }
+  }
+
   return (
     <div className="flex gap-3">
       <AvatarAlias alias={c.autorAlias} anonimo={false} oficial={c.autorOficial} size={32} />
@@ -114,8 +157,40 @@ function Comentario({ c }: { c: Comentario }) {
           )}
           {!c.autorOficial && c.autorPrograma && <span>· {c.autorPrograma}</span>}
           <span>· {haceCuanto(c.creadoEn)}</span>
+          {c.editadoEn && <span>· editado</span>}
         </div>
-        <p className="mt-1 whitespace-pre-line text-sm text-tinta">{c.cuerpo}</p>
+
+        {editando ? (
+          <div className="mt-1 flex flex-col gap-2">
+            <textarea
+              value={texto}
+              onChange={(ev) => setTexto(ev.target.value)}
+              rows={3}
+              maxLength={2000}
+              className="border border-borde bg-blanco-papel px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <Boton onClick={guardar} disabled={ocupado || !texto.trim()}>Guardar</Boton>
+              <Boton variante="secundario" onClick={() => { setEditando(false); setTexto(c.cuerpo); }}>
+                Cancelar
+              </Boton>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 whitespace-pre-line text-sm text-tinta">{c.cuerpo}</p>
+            {c.esMio && (
+              <div className="mt-1 flex gap-3 text-xs">
+                <button onClick={() => setEditando(true)} className="text-tinta-suave underline hover:text-verde">
+                  Editar
+                </button>
+                <button onClick={eliminar} disabled={ocupado} className="text-terracota underline">
+                  Eliminar
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

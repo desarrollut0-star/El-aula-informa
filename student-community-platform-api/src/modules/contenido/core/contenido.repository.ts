@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, notExists, sql } from "drizzle-orm";
 import type { Db } from "../../../shared/db/client";
 import { programas, usuarios } from "../../identidad/schema";
 import { comentarios, contenidos, reacciones, vistaMuro } from "../schema";
@@ -42,6 +42,13 @@ function miReaccion(usuarioId: string) {
   )`.as("miReaccion");
 }
 
+/** `true` si la tarjeta la escribió este usuario (para mostrar editar/eliminar). */
+function esMio(usuarioId: string) {
+  return sql<boolean>`(
+    select c.autor_id = ${usuarioId} from contenidos c where c.id = ${vistaMuro.id}
+  )`.as("esMio");
+}
+
 /**
  * Lecturas del muro: SIEMPRE desde `vista_muro` (la vista ya resuelve el
  * anonimato — autor_alias sale null desde el SQL, ninguna consulta puede
@@ -75,7 +82,7 @@ export class ContenidoRepository {
   }) {
     const { usuarioId, tipo, cursor, limite = 20 } = opciones;
     return this.db
-      .select({ ...columnasMuro, miReaccion: miReaccion(usuarioId) })
+      .select({ ...columnasMuro, miReaccion: miReaccion(usuarioId), esMio: esMio(usuarioId) })
       .from(vistaMuro)
       .leftJoin(programas, eq(programas.id, vistaMuro.programaId))
       .where(
@@ -91,7 +98,7 @@ export class ContenidoRepository {
   /** Una sola tarjeta (para el detalle). */
   async porId(id: string, usuarioId: string) {
     const [fila] = await this.db
-      .select({ ...columnasMuro, miReaccion: miReaccion(usuarioId) })
+      .select({ ...columnasMuro, miReaccion: miReaccion(usuarioId), esMio: esMio(usuarioId) })
       .from(vistaMuro)
       .leftJoin(programas, eq(programas.id, vistaMuro.programaId))
       .where(eq(vistaMuro.id, id))
@@ -118,6 +125,29 @@ export class ContenidoRepository {
       .where(eq(contenidos.autorId, usuarioId))
       .orderBy(desc(contenidos.creadoEn))
       .limit(limite);
+  }
+
+  /** Editar la propia tarjeta. Filtra por autor: si no es suya, no toca nada. */
+  async editar(
+    id: string,
+    autorId: string,
+    campos: { titulo?: string | null; cuerpo?: string; lugar?: string | null; fechaEvento?: Date | null },
+  ) {
+    const [fila] = await this.db
+      .update(contenidos)
+      .set({ ...campos, editadoEn: new Date() })
+      .where(and(eq(contenidos.id, id), eq(contenidos.autorId, autorId)))
+      .returning();
+    return fila ?? null;
+  }
+
+  /** Borrar la propia tarjeta (los comentarios/reacciones caen por FK cascade). */
+  async eliminar(id: string, autorId: string) {
+    const filas = await this.db
+      .delete(contenidos)
+      .where(and(eq(contenidos.id, id), eq(contenidos.autorId, autorId)))
+      .returning({ id: contenidos.id });
+    return filas.length > 0;
   }
 
   /** Vista swiper: testimonios visibles que este usuario no ha reaccionado. */
@@ -160,7 +190,7 @@ export class ContenidoRepository {
 
   // ---------- comentarios ----------
 
-  async comentarios(contenidoId: string) {
+  async comentarios(contenidoId: string, usuarioId: string) {
     return this.db
       .select({
         id: comentarios.id,
@@ -168,14 +198,22 @@ export class ContenidoRepository {
         cuerpo: comentarios.cuerpo,
         esRespuestaOficial: comentarios.esRespuestaOficial,
         creadoEn: comentarios.creadoEn,
+        editadoEn: comentarios.editadoEn,
         autorAlias: usuarios.alias,
         autorOficial: usuarios.esCuentaOficial,
         autorPrograma: programas.nombre,
+        esMio: sql<boolean>`${comentarios.autorId} = ${usuarioId}`,
       })
       .from(comentarios)
       .innerJoin(usuarios, eq(usuarios.id, comentarios.autorId))
       .leftJoin(programas, eq(programas.id, usuarios.programaId))
-      .where(and(eq(comentarios.contenidoId, contenidoId), eq(comentarios.estado, "visible")))
+      .where(
+        and(
+          eq(comentarios.contenidoId, contenidoId),
+          eq(comentarios.estado, "visible"),
+          isNull(comentarios.eliminadoEn),
+        ),
+      )
       .orderBy(asc(comentarios.creadoEn))
       .limit(200);
   }
@@ -189,6 +227,26 @@ export class ContenidoRepository {
   }) {
     const [fila] = await this.db.insert(comentarios).values(input).returning();
     return fila;
+  }
+
+  /** Editar el propio comentario. */
+  async editarComentario(id: string, autorId: string, cuerpo: string) {
+    const [fila] = await this.db
+      .update(comentarios)
+      .set({ cuerpo, editadoEn: new Date() })
+      .where(and(eq(comentarios.id, id), eq(comentarios.autorId, autorId), isNull(comentarios.eliminadoEn)))
+      .returning();
+    return fila ?? null;
+  }
+
+  /** Borrado lógico del propio comentario (el trigger baja total_comentarios). */
+  async eliminarComentario(id: string, autorId: string) {
+    const filas = await this.db
+      .update(comentarios)
+      .set({ eliminadoEn: new Date() })
+      .where(and(eq(comentarios.id, id), eq(comentarios.autorId, autorId), isNull(comentarios.eliminadoEn)))
+      .returning({ id: comentarios.id });
+    return filas.length > 0;
   }
 
   async ocultar(contenidoId: string) {

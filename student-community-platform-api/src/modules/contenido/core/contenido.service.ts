@@ -57,6 +57,25 @@ export class ContenidoService {
     return this.repo.mias(usuarioId);
   }
 
+  async editar(
+    id: string,
+    autorId: string,
+    campos: { titulo?: string | null; cuerpo?: string; lugar?: string | null; fechaEvento?: Date | null },
+  ) {
+    if (campos.cuerpo !== undefined && campos.cuerpo.trim().length === 0) {
+      throw new AppError(400, "CUERPO_VACIO", "El contenido no puede quedar vacío.");
+    }
+    const fila = await this.repo.editar(id, autorId, campos);
+    if (!fila) throw new AppError(404, "NO_ENCONTRADO", "No encontramos esa publicación tuya.");
+    return fila;
+  }
+
+  async eliminar(id: string, autorId: string) {
+    const ok = await this.repo.eliminar(id, autorId);
+    if (!ok) throw new AppError(404, "NO_ENCONTRADO", "No encontramos esa publicación tuya.");
+    return { eliminado: true };
+  }
+
   siguientesParaSwiper(usuarioId: string) {
     return this.repo.siguientesParaSwiper(usuarioId);
   }
@@ -67,8 +86,23 @@ export class ContenidoService {
       : this.repo.reaccionar(usuarioId, contenidoId, aFavor);
   }
 
-  comentarios(contenidoId: string) {
-    return this.repo.comentarios(contenidoId);
+  comentarios(contenidoId: string, usuarioId: string) {
+    return this.repo.comentarios(contenidoId, usuarioId);
+  }
+
+  async editarComentario(id: string, autorId: string, cuerpo: string) {
+    if (cuerpo.trim().length === 0) {
+      throw new AppError(400, "CUERPO_VACIO", "El comentario no puede quedar vacío.");
+    }
+    const fila = await this.repo.editarComentario(id, autorId, cuerpo.trim());
+    if (!fila) throw new AppError(404, "NO_ENCONTRADO", "No encontramos ese comentario tuyo.");
+    return fila;
+  }
+
+  async eliminarComentario(id: string, autorId: string) {
+    const ok = await this.repo.eliminarComentario(id, autorId);
+    if (!ok) throw new AppError(404, "NO_ENCONTRADO", "No encontramos ese comentario tuyo.");
+    return { eliminado: true };
   }
 
   async comentar(input: {

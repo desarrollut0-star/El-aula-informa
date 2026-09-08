@@ -26,6 +26,17 @@ const comentarSchema = z.object({
   padreId: z.string().uuid().optional(),
 });
 
+const editarSchema = z
+  .object({
+    titulo: z.string().max(140).nullable().optional(),
+    cuerpo: z.string().min(1).max(4000).optional(),
+    lugar: z.string().max(160).nullable().optional(),
+    fechaEvento: z.string().datetime().nullable().optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, { message: "Nada que actualizar" });
+
+const editarComentarioSchema = z.object({ cuerpo: z.string().min(1).max(2000) });
+
 /** Publicar cualquier tipo de contenido del muro (menos denuncia/encuesta). */
 contenidoRoutes.post("/", requireRole(), validarJson(publicarSchema), async (c) => {
   const session = c.get("session")!;
@@ -84,9 +95,30 @@ contenidoRoutes.get("/:id", requireSesion(), async (c) => {
   return c.json({ tarjeta });
 });
 
+/** Editar la propia publicación. */
+contenidoRoutes.patch("/:id", requireRole(), validarJson(editarSchema), async (c) => {
+  const session = c.get("session")!;
+  const d = c.req.valid("json");
+  const fila = await new ContenidoService(c.get("db")).editar(c.req.param("id"), session.usuarioId, {
+    titulo: d.titulo,
+    cuerpo: d.cuerpo,
+    lugar: d.lugar,
+    fechaEvento: d.fechaEvento === undefined ? undefined : d.fechaEvento === null ? null : new Date(d.fechaEvento),
+  });
+  return c.json(fila);
+});
+
+/** Borrar la propia publicación. */
+contenidoRoutes.delete("/:id", requireRole(), async (c) => {
+  const session = c.get("session")!;
+  const r = await new ContenidoService(c.get("db")).eliminar(c.req.param("id"), session.usuarioId);
+  return c.json(r);
+});
+
 /** Hilo de comentarios de una tarjeta. */
 contenidoRoutes.get("/:id/comentarios", requireSesion(), async (c) => {
-  const comentarios = await new ContenidoService(c.get("db")).comentarios(c.req.param("id"));
+  const session = c.get("session")!;
+  const comentarios = await new ContenidoService(c.get("db")).comentarios(c.req.param("id"), session.usuarioId);
   return c.json({ comentarios });
 });
 
@@ -102,4 +134,22 @@ contenidoRoutes.post("/:id/comentarios", requireRole(), validarJson(comentarSche
     padreId,
   });
   return c.json(comentario, 201);
+});
+
+/** Editar el propio comentario. */
+contenidoRoutes.patch("/:id/comentarios/:cid", requireRole(), validarJson(editarComentarioSchema), async (c) => {
+  const session = c.get("session")!;
+  const fila = await new ContenidoService(c.get("db")).editarComentario(
+    c.req.param("cid"),
+    session.usuarioId,
+    c.req.valid("json").cuerpo,
+  );
+  return c.json(fila);
+});
+
+/** Borrar el propio comentario. */
+contenidoRoutes.delete("/:id/comentarios/:cid", requireRole(), async (c) => {
+  const session = c.get("session")!;
+  const r = await new ContenidoService(c.get("db")).eliminarComentario(c.req.param("cid"), session.usuarioId);
+  return c.json(r);
 });

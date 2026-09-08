@@ -66,6 +66,16 @@ export const api = {
   swiper: () => pedir<{ tarjetas: TarjetaContenido[] }>("/contenido/swiper"),
   contenido: (id: string) => pedir<{ tarjeta: TarjetaContenido }>(`/contenido/${id}`),
   misPublicaciones: () => pedir<{ publicaciones: MiPublicacion[] }>("/contenido/mias"),
+  editarContenido: (
+    id: string,
+    campos: { titulo?: string | null; cuerpo?: string; lugar?: string | null; fechaEvento?: string | null },
+  ) => pedir<TarjetaContenido>(`/contenido/${id}`, { method: "PATCH", body: JSON.stringify(campos) }),
+  eliminarContenido: (id: string) =>
+    pedir<{ eliminado: true }>(`/contenido/${id}`, { method: "DELETE" }),
+  editarComentario: (id: string, cid: string, cuerpo: string) =>
+    pedir<Comentario>(`/contenido/${id}/comentarios/${cid}`, { method: "PATCH", body: JSON.stringify({ cuerpo }) }),
+  eliminarComentario: (id: string, cid: string) =>
+    pedir<{ eliminado: true }>(`/contenido/${id}/comentarios/${cid}`, { method: "DELETE" }),
   comentarios: (id: string) => pedir<{ comentarios: Comentario[] }>(`/contenido/${id}/comentarios`),
   comentar: (id: string, cuerpo: string, padreId?: string) =>
     pedir<Comentario>(`/contenido/${id}/comentarios`, {

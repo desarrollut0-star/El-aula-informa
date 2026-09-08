@@ -57,6 +57,8 @@ export interface TarjetaContenido {
   creadoEn: string;
   /** true = ya apoyaste · false = ya rechazaste · null = no has reaccionado. */
   miReaccion?: boolean | null;
+  /** true si la publicación es tuya (para mostrar editar / eliminar). */
+  esMio?: boolean;
 }
 
 export type EstadoContenido = "visible" | "en_revision" | "oculto" | "rechazado";
@@ -83,6 +85,8 @@ export interface Comentario {
   autorOficial: boolean;
   autorPrograma: string | null;
   creadoEn: string;
+  editadoEn: string | null;
+  esMio: boolean;
 }
 
 export interface Notificacion {
