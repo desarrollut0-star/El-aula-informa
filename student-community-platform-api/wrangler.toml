@@ -1,0 +1,43 @@
+name = "student-community-platform-backend"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Secretos (wrangler secret put ...): los da Pedro por gestor de contraseñas.
+#   DATABASE_URL     pooler de Supabase, modo transacción (6543), rol app_backend.<ref>
+#   IDENTITY_PEPPER  llave del HMAC de las matrículas
+#   CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET   (los genera quien cree la cuenta)
+[vars]
+SUPABASE_URL = "https://rpfrexmdoigwxnstffun.supabase.co"
+SUPABASE_JWKS_URL = "https://rpfrexmdoigwxnstffun.supabase.co/auth/v1/.well-known/jwks.json"
+FRONTEND_ORIGIN = "http://localhost:3000"
+INSTITUTIONAL_EMAIL_DOMAIN = "uthh.edu.mx"
+CLOUDINARY_CLOUD_NAME = ""
+
+# La base la administra Supabase (db/comunidad_uthh.sql). Evidencia de
+# denuncias: Cloudinary con uso='evidencia', entrega='private'.
+
+[triggers]
+crons = [
+  "*/15 * * * *",  # recalcular_ranking() + dispatcher del outbox
+  "0 4 * * *",     # reconciliar padrón + purgar_antiguos()
+  "0 5 * * 1"      # semanal: archivos_huerfanos() → borrar en Cloudinary
+]
+
+# Cloudflare Hyperdrive — poolea/cachea la conexión a Supabase desde la red
+# de Cloudflare. Y arregla el cuelgue de `wrangler dev` local: el driver
+# `postgres` sobre el pooler de Supabase no negocia TLS sobre sockets en
+# Miniflare, así que en local wrangler enruta la conexión por Node usando
+# la cadena de WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+# (definida en .dev.vars, con la contraseña — por eso no va aquí).
+#
+# LOCAL: funciona ya, con el `id` de abajo tal cual (wrangler no lo valida
+#        cuando hay cadena local).
+# DEPLOY: antes de `wrangler deploy` hay que crear el Hyperdrive real
+#        (conexión en modo SESIÓN, puerto 5432, rol postgres) y reemplazar
+#        el id:
+#   npx wrangler hyperdrive create comunidad-uthh \
+#     --connection-string="postgresql://postgres.rpfrexmdoigwxnstffun:<PASS>@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "00000000000000000000000000000000"  # placeholder — reemplazar antes de desplegar

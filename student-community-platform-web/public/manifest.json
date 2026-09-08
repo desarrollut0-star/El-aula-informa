@@ -1,0 +1,10 @@
+{
+  "name": "El Aula Informa",
+  "short_name": "El Aula Informa",
+  "description": "Participación y auditoría estudiantil — UTHH",
+  "start_url": "/swiper",
+  "display": "standalone",
+  "background_color": "#EFEEE1",
+  "theme_color": "#123522",
+  "icons": []
+}

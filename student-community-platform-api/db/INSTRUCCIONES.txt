@@ -1,0 +1,270 @@
+﻿=====================================================================
+ COMUNIDAD UTHH - EL AULA INFORMA
+ BASE DE DATOS - GUIA PARA EL EQUIPO
+ Version 2.0 - 6 de septiembre de 2026
+=====================================================================
+
+ ESTADO: la base de datos YA ESTA INSTALADA y funcionando en el
+ proyecto de Supabase del equipo. Este documento no es una guia de
+ instalacion: es lo que necesita cada quien para trabajar con ella.
+
+ Responsable de base de datos: Pedro Rubio Angeles.
+ Cualquier cambio de esquema pasa por el, para que el SQL, el diagrama
+ y el reporte no se desincronicen de la base real.
+
+
+---------------------------------------------------------------------
+ CONTENIDO DEL PAQUETE
+---------------------------------------------------------------------
+
+  Reporte_Base_de_Datos_El_Aula_Informa.docx
+      El documento completo (55 paginas). Si vas a conectar el backend
+      o el frontend, ve directo a la SECCION 14: ahi estan las cadenas
+      de conexion, todas las variables y como verificar que funciona.
+      Si el indice sale vacio al abrirlo: clic derecho sobre el ->
+      "Actualizar campo" (o F9).
+
+  sql\comunidad_uthh_v2.sql
+      La base completa en un solo archivo, con los dos parches ya
+      incorporados. Es el que se usa para crear el proyecto de PRUEBAS.
+      La produccion ya lo tiene aplicado; NO hay que volver a correrlo.
+
+  sql\pruebas_comunidad_uthh_v2.sql
+      49 pruebas de comportamiento. SOLO para una base de prueba:
+      inserta datos de ejemplo.
+
+  sql\parches\04_cuentas_autorizadas.sql
+  sql\parches\05_alta_oauth.sql
+      Los dos parches por separado. Ya estan aplicados en produccion.
+      Sirven si alguien instalo la version anterior en otro lado.
+
+  env\backend.dev.vars.example
+  env\frontend.env.local.example
+      Los archivos de variables, comentados, listos para copiar al
+      repositorio.
+
+  diagramas\diagrama-er-el-aula-informa.pdf / .png / .svg / .mmd
+      El diagrama entidad-relacion. El .mmd es el codigo fuente
+      (editable en mermaid.live, draw.io o dentro de un .md de GitHub).
+
+
+---------------------------------------------------------------------
+ DATOS DEL PROYECTO
+---------------------------------------------------------------------
+
+  Proyecto      : desarrollut.0@gmail.com's Project
+  Organizacion  : Desarrollo UT (plan gratuito)
+  Referencia    : rpfrexmdoigwxnstffun
+  URL           : https://rpfrexmdoigwxnstffun.supabase.co
+  Region        : East US (North Virginia)
+  Contenido     : 29 tablas, 3 vistas, 20 funciones y triggers, RLS en todo
+
+  Decisiones ya tomadas:
+   - Autenticacion: Supabase Auth (NO la propia; por eso no existen las
+     tablas sesiones ni tokens_acceso)
+   - Archivos: Cloudinary (NO Cloudflare R2)
+   - Data API de Supabase: DESACTIVADA a proposito
+
+
+---------------------------------------------------------------------
+ PARTE 1 - BACKEND (Worker de Cloudflare)
+---------------------------------------------------------------------
+
+PASO 1. Variables de entorno
+  1.1  Copiar env\backend.dev.vars.example a apps/backend/.dev.vars
+  1.2  Pedirle a Pedro los valores marcados PEDIR: la contraseña de
+       app_backend y el IDENTITY_PEPPER.
+  1.3  En produccion, cada secreto se carga con:
+         wrangler secret put DATABASE_URL
+         wrangler secret put IDENTITY_PEPPER
+         ... (uno por cada variable)
+
+PASO 2. Cadena de conexion
+  Pooler en MODO TRANSACCION, puerto 6543. El usuario lleva el sufijo
+  del proyecto:
+
+    postgresql://app_backend.rpfrexmdoigwxnstffun:<CONTRASEÑA>@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+
+  NO usar la conexion directa (db.<ref>.supabase.co): es solo IPv6 en
+  el plan gratuito y ademas agotaria las conexiones de Postgres.
+
+  En client.ts es OBLIGATORIO:
+    postgres(url, { prepare: false, max: 1 })
+  El modo transaccion no admite sentencias preparadas. Esto ya esta
+  correcto en el codigo actual.
+
+PASO 3. Comprobar la conexion ANTES de escribir codigo
+    psql "<la cadena de arriba>" -c "select current_user;" -c "select count(*) from programas;"
+
+  Debe responder app_backend y 21 programas.
+
+  Si falla, ver la tabla de errores comunes en la seccion 14.6 del
+  reporte. El caso mas probable: falta el sufijo del proyecto en el
+  usuario (app_backend.rpfrexmdoigwxnstffun, no solo app_backend).
+
+  NOTA: nadie ha probado todavia que el pooler acepte el rol
+  app_backend en ESTE proyecto. Si diera error de autenticacion, el
+  plan B es usar el rol postgres con la misma cadena y avisarle a
+  Pedro. Eso no desactiva RLS ni debilita nada mas.
+
+PASO 4. Que cambia en el codigo
+  Lo mas importante: la autenticacion. Ya NO se generan enlaces ni se
+  usa cookie propia. El frontend manda el JWT de Supabase en el
+  encabezado Authorization y el Worker lo verifica con las llaves
+  publicas del JWKS. El "sub" del token es usuarios.id. El codigo
+  completo esta en la seccion 14.5 del reporte.
+
+  Lo demas:
+   - Todo lo que era testimonios / publicaciones / denuncias se inserta
+     en la tabla "contenidos" con su columna "tipo". Las denuncias
+     ademas insertan su fila en "denuncias" (misma transaccion).
+   - El feed y el swiper leen la vista vista_muro:
+       select * from vista_muro
+        where (score, id) < ($1, $2)
+        order by score desc, id desc limit 20;
+   - Reaccionar (like / dislike / cambiar de opinion):
+       insert into reacciones (usuario_id, contenido_id, a_favor)
+       values ($1, $2, $3)
+       on conflict (usuario_id, contenido_id)
+       do update set a_favor = excluded.a_favor;
+     Los contadores los lleva la base con triggers: NO sumarlos a mano.
+   - Reportar: insertar en reportes_contenido y leer total_reportes de
+     contenidos para saber si llego al umbral de 5.
+   - Testigos: insertar en denuncia_confirmaciones y leer
+     total_confirmaciones de denuncias (umbral 5).
+   - Eventos entre modulos: insertar en eventos_integracion EN LA MISMA
+     TRANSACCION que el cambio. El dispatcher lee solo los que tengan
+     estado 'pendiente' y siguiente_intento_en <= now(); al fallar,
+     suma intentos y recalcula siguiente_intento_en (1, 5, 15, 60 min);
+     a los 5 intentos pasa a 'fallido'.
+   - Quitar de wrangler.toml el binding [[r2_buckets]].
+   - Borrar el job cerrar-encuestas (una encuesta esta cerrada cuando
+     cierra_en < now()) y refrescar-estadisticas (ahora es una vista).
+
+PASO 5. Tareas programadas (Cron Triggers)
+   Cada 15 min : select recalcular_ranking();  + dispatcher del outbox
+   Diario 4:00 : reconciliacion del padron  +  select purgar_antiguos();
+   Semanal     : select * from archivos_huerfanos();
+                 -> borrar cada public_id en Cloudinary
+                 -> delete from archivos where id = any($ids);
+
+PASO 6. Cloudinary
+  6.1  Crear la cuenta y guardar en el Worker:
+         CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+  6.2  Flujo: el navegador pide una firma al Worker, sube el archivo
+       DIRECTO a Cloudinary, y manda la respuesta al Worker, que la
+       verifica y registra la fila en "archivos".
+  6.3  Reglas que la base exige (si no se cumplen, rechaza el INSERT):
+        - evidencia de denuncia: uso='evidencia' y entrega='private'
+        - imagen de tarjeta: uso='portada_contenido', max 3 por tarjeta,
+          ninguna en testimonios ni denuncias
+        - foto de carrera: uso='foto_programa'
+        - tamaño: imagen <= 5 MB, PDF <= 10 MB
+  6.4  Usar una transformacion de entrada que limite el ancho (p.ej.
+       1600px con q_auto): ahorra almacenamiento y de paso elimina los
+       metadatos EXIF/GPS, que es obligatorio para las evidencias.
+
+
+---------------------------------------------------------------------
+ PARTE 2 - FRONTEND (Next.js en Vercel)
+---------------------------------------------------------------------
+
+PASO 1. Variables
+  Copiar env\frontend.env.local.example a apps/frontend/.env.local.
+  La llave publishable se saca de: Project Settings -> API Keys.
+
+  OJO con el nombre: este proyecto usa el formato NUEVO de llaves
+  (sb_publishable_...), no la vieja "anon key" en formato JWT. Si la
+  buscas con el nombre viejo, no la vas a encontrar.
+
+PASO 2. Inicio de sesion
+  Se usa supabase-js contra Supabase Auth. Codigo completo en la
+  seccion 14.5 del reporte. Resumen:
+    - signInWithOtp({ email }) manda un codigo de 8 digitos al correo
+    - verifyOtp({ email, token, type:'email' }) lo confirma
+    - a partir de ahi, cada llamada al Worker lleva:
+        Authorization: Bearer <session.access_token>
+
+PASO 3. Manejo de errores del alta
+  Si el correo no es @uthh.edu.mx (ni esta en la lista blanca), Supabase
+  devuelve un error generico: "Database error saving new user". Ese
+  mensaje viene en realidad del trigger de la base. Atraparlo y mostrar
+  algo entendible: "Usa tu correo institucional @uthh.edu.mx".
+
+PASO 4. Lo que NO se puede hacer
+  La Data API esta desactivada a proposito. supabase.from('...').select()
+  NO va a funcionar, y asi debe ser: todos los datos se piden al Worker.
+  La llave publishable solo sirve para el login.
+
+PASO 5. Pendiente de configurar
+  En Supabase -> Authentication -> URL Configuration hay que poner la
+  URL de Vercel como Site URL cuando exista el despliegue. Por ahora
+  esta en http://localhost:3000.
+
+
+---------------------------------------------------------------------
+ PARTE 3 - OPERACION (responsable de base de datos)
+---------------------------------------------------------------------
+
+CAMBIOS DE ESQUEMA
+  1. Se hace primero en el SQL, no en el panel.
+  2. Se prueba en el proyecto de PRUEBAS con pruebas_..._v2.sql.
+  3. Se aplica en produccion.
+  4. Se actualiza el diagrama (.mmd) y el reporte.
+  Nunca al reves: si alguien cambia una tabla desde Table Editor, el
+  SQL deja de reflejar la realidad y la siguiente instalacion falla.
+
+ROTAR UN SECRETO
+  Contraseña de app_backend:
+    1. select encode(gen_random_bytes(24), 'hex');   -- copiar el valor
+    2. alter role app_backend password '<lo copiado>';
+    3. Actualizar el secreto del Worker: wrangler secret put DATABASE_URL
+    4. Redesplegar el Worker.
+  El IDENTITY_PEPPER es distinto: si se cambia, TODOS los hashes del
+  padron dejan de coincidir y hay que volver a cargarlo. No rotarlo sin
+  planearlo.
+
+RESPALDOS
+  El plan gratuito NO incluye respaldos automaticos.
+  Programar un pg_dump semanal (una GitHub Action basta) usando la
+  cadena del pooler en modo sesion (puerto 5432, rol postgres).
+  Probar una restauracion UNA VEZ, antes de que haga falta.
+
+VIGILAR
+  - El proyecto se pausa tras una semana sin actividad. El cron de 15
+    minutos lo mantiene vivo, pero conviene revisarlo al inicio.
+  - Limite de 500 MB de base. Las imagenes van a Cloudinary, asi que
+    no deberia acercarse.
+  - Cola de moderacion: select * from vista_cola_moderacion;
+
+
+---------------------------------------------------------------------
+ PENDIENTES DEL EQUIPO
+---------------------------------------------------------------------
+  [ ] Validar nombres de programas y a que carrera continua cada TSU
+      contra la oferta oficial (hoy estan cargados de una fuente
+      publicada, sin confirmar).
+  [ ] Cargar matricula_total por programa (hoy en 0: los porcentajes
+      del tablero salen en 0).
+  [ ] Definir el Site URL en Auth cuando exista el despliegue en Vercel.
+  [ ] Decidir si se activa inicio de sesion con GOOGLE. El correo
+      institucional es Google Workspace, asi que seria un clic en vez
+      de codigo por correo, y quitaria la dependencia del envio de
+      correo (que es el cuello de botella del plan gratuito).
+      Ver seccion 15.2 del reporte.
+  [ ] Programar el respaldo semanal.
+  [ ] Crear la cuenta de Cloudinary y repartir sus llaves.
+  [ ] Redactar el aviso de privacidad mencionando a Supabase, Cloudinary
+      y las APIs de moderacion como terceros que tratan datos.
+
+
+---------------------------------------------------------------------
+ REPARTO DE SECRETOS
+---------------------------------------------------------------------
+  Pedro entrega:
+    - al backend : DATABASE_URL y IDENTITY_PEPPER
+    - al frontend: la llave publishable (esa no es secreta)
+  Las llaves de Cloudinary las genera quien cree esa cuenta.
+
+  Nunca por Discord ni WhatsApp: gestor de contraseñas compartido o
+  mensaje efimero. Si algo se filtra, rotarlo (ver arriba).

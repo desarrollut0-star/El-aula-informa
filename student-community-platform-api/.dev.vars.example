@@ -1,0 +1,119 @@
+# =====================================================================
+#  apps/backend/.dev.vars.example
+#  Comunidad UTHH · El Aula Informa — variables del Worker
+#
+#  COPIAR A ".dev.vars" (que NO se sube al repositorio) y rellenar.
+#  En producción, cada valor se carga con:  wrangler secret put <NOMBRE>
+#  Los valores marcados PEDIR van en el gestor de contraseñas del equipo;
+#  se los da Pedro (responsable de base de datos).
+# =====================================================================
+
+
+# ---------------------------------------------------------------------
+#  BASE DE DATOS — conexión del Worker
+#  Pooler de Supabase en MODO TRANSACCIÓN, puerto 6543.
+#  El usuario es "<rol>.<ref del proyecto>": app_backend.rpfrexmdoigwxnstffun
+#
+#  Por qué el pooler y no la conexión directa:
+#   · Cloudflare Workers abre muchas conexiones cortas; la conexión
+#     directa (db.<ref>.supabase.co:5432) agotaría el límite de Postgres.
+#   · Además, la conexión directa es solo IPv6 en el plan gratuito.
+#
+#  En client.ts es OBLIGATORIO postgres(url, { prepare: false, max: 1 }):
+#  el modo transacción no admite sentencias preparadas.
+#
+#  Si la contraseña llevara símbolos, hay que percent-encodearlos.
+# ---------------------------------------------------------------------
+DATABASE_URL="postgresql://app_backend.rpfrexmdoigwxnstffun:PEDIR@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+
+
+# ---------------------------------------------------------------------
+#  HYPERDRIVE — cadena local para `npm run dev`
+#  El driver `postgres` sobre el pooler de Supabase se cuelga dentro de
+#  Miniflare (TLS sobre sockets). Con esta variable, `wrangler dev` enruta
+#  la conexión del binding HYPERDRIVE por Node y deja de colgarse.
+#  `scripts/dev.mjs` la lee de aquí (por eso lleva la contraseña y este
+#  archivo NO se sube). Misma base que DATABASE_URL, sin ?sslmode.
+#  En producción NO se usa: se crea el Hyperdrive real y se pone su id
+#  en wrangler.toml (ver comentario ahí).
+# ---------------------------------------------------------------------
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://app_backend.rpfrexmdoigwxnstffun:PEDIR@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+
+
+# ---------------------------------------------------------------------
+#  BASE DE DATOS — migraciones (drizzle-kit)
+#  NO la usa el Worker: solo se usa desde la máquina de quien migra, y
+#  va con el rol postgres, que sí puede crear y alterar tablas.
+#  Pooler en MODO SESIÓN, puerto 5432.
+#  Normalmente solo la tiene el responsable de base de datos.
+# ---------------------------------------------------------------------
+# DATABASE_URL_MIGRACIONES="postgresql://postgres.rpfrexmdoigwxnstffun:PEDIR@aws-0-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+
+
+# ---------------------------------------------------------------------
+#  SUPABASE AUTH
+#  El frontend inicia sesión con Supabase y manda el JWT al Worker en el
+#  encabezado Authorization. El Worker lo verifica con la llave pública
+#  publicada en JWKS — no necesita ninguna llave secreta para esto.
+#  El "sub" del token es usuarios.id.
+# ---------------------------------------------------------------------
+SUPABASE_URL="https://rpfrexmdoigwxnstffun.supabase.co"
+SUPABASE_JWKS_URL="https://rpfrexmdoigwxnstffun.supabase.co/auth/v1/.well-known/jwks.json"
+
+# Solo si el Worker necesitara administrar usuarios (dar de baja, listar).
+# Es la llave con permisos totales sobre Auth: NUNCA en el frontend ni en
+# el repositorio. Si no se usa, dejarla vacía.
+SUPABASE_SECRET_KEY=""
+
+
+# ---------------------------------------------------------------------
+#  APLICACIÓN
+# ---------------------------------------------------------------------
+# Origen permitido por CORS. En producción, el dominio del frontend.
+FRONTEND_ORIGIN="http://localhost:3000"
+
+# Dominio institucional aceptado. También está en el trigger de la base
+# (fn_auth_validar_dominio): si se cambia aquí, hay que cambiarlo allá.
+INSTITUTIONAL_EMAIL_DOMAIN="uthh.edu.mx"
+
+
+# ---------------------------------------------------------------------
+#  PEPPER DEL PADRÓN
+#  Llave secreta con la que el Worker calcula el HMAC de las matrículas
+#  antes de guardarlas o buscarlas en privado.padron_alumnos.
+#  NUNCA se guarda en la base: eso es lo que hace que un respaldo filtrado
+#  no permita revertir los hashes y saber de quién es cada matrícula.
+#  Generar una vez con: openssl rand -hex 32
+#  Si se cambia, TODOS los hashes del padrón dejan de coincidir.
+# ---------------------------------------------------------------------
+IDENTITY_PEPPER="PEDIR"
+
+
+# ---------------------------------------------------------------------
+#  CLOUDINARY — imágenes y PDF
+#  El navegador sube los archivos directo a Cloudinary con una firma que
+#  emite el Worker; los bytes nunca pasan por el Worker ni por la base.
+#  El api_secret solo vive aquí.
+# ---------------------------------------------------------------------
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
+
+
+# ---------------------------------------------------------------------
+#  MODERACIÓN AUTOMÁTICA (opcional, capa gratuita)
+#  Si se deja vacío, solo corre el filtro local de palabras_bloqueadas.
+# ---------------------------------------------------------------------
+OPENAI_API_KEY=""
+
+
+# =====================================================================
+#  YA NO SE USAN (quedaban del diseño con autenticación propia)
+#  El equipo eligió Supabase Auth, así que estas variables se eliminan:
+#
+#   AUTH_SECRET      → las sesiones las firma y administra Supabase
+#   RESEND_API_KEY   → los correos de acceso los manda Supabase
+#   EMAIL_FROM       → idem
+#   R2_BUCKET        → los archivos van a Cloudinary, no a R2
+#                      (quitar también el binding [[r2_buckets]] de wrangler.toml)
+# =====================================================================

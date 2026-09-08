@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────
+#  El Aula Informa — repositorio: solo backend y frontend
+# ─────────────────────────────────────────────────────────────
+
+# Material y documentación del proyecto — NO se suben
+/Documentacion/
+/Material/
+*.zip
+*.docx
+*.pdf
+
+# Diagramas exportados (documentación, pesados)
+student-community-platform-api/docs/diagramas/
+
+# Dependencias y artefactos de compilación
+node_modules/
+.next/
+out/
+dist/
+.wrangler/
+.vercel/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Secretos y variables de entorno (los .example SÍ se suben)
+.dev.vars
+.env
+.env.local
+.env*.local
+.env.production
+.env.development
+
+# Sistema / editor
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
