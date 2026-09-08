@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui/Boton";
+import { LimiteDiario } from "@/components/contenido/LimiteDiario";
 import { api, ApiError } from "@/lib/api-client";
 
 /** Plantillas rápidas (sección 3 del documento de propuestas): baja fricción para redactar. */
@@ -42,7 +43,9 @@ export default function NuevoTestimonio() {
         alumnos lo califiquen.
       </p>
 
-      <form onSubmit={enviar} className="mt-6 flex flex-col gap-4">
+      <div className="mt-4"><LimiteDiario /></div>
+
+      <form onSubmit={enviar} className="mt-4 flex flex-col gap-4">
         <div className="flex flex-wrap gap-2">
           {PLANTILLAS.map((p) => (
             <button

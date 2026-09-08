@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui/Boton";
 import { PuertaSesion } from "@/components/auth/PuertaSesion";
+import { LimiteDiario } from "@/components/contenido/LimiteDiario";
 import { api, ApiError } from "@/lib/api-client";
 
 export default function NuevoEvento() {
@@ -40,6 +41,7 @@ export default function NuevoEvento() {
     <PuertaSesion titulo="Publicar un evento">
       <form onSubmit={enviar} className="mx-auto flex max-w-lg flex-col gap-4">
         <h1 className="text-3xl">Nuevo evento</h1>
+        <LimiteDiario />
         <p className="text-sm text-tinta-suave">
           Una asamblea, marcha o actividad de la comunidad. Indica cuándo y dónde.
         </p>

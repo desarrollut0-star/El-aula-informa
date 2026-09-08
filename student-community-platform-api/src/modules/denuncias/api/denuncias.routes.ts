@@ -32,7 +32,13 @@ const crearSchema = z.object({
 denunciasRoutes.post("/", requireRole(), validarJson(crearSchema), async (c) => {
   const session = c.get("session")!;
   const { categoriaId, texto, esAnonimo } = c.req.valid("json");
-  const contenido = await crearDenuncia(c.get("db"), { autorId: session.usuarioId, categoriaId, texto, esAnonimo });
+  const contenido = await crearDenuncia(c.get("db"), {
+    autorId: session.usuarioId,
+    categoriaId,
+    texto,
+    esAnonimo,
+    esCuentaOficial: session.esCuentaOficial,
+  });
   return c.json({ id: contenido.id }, 201);
 });
 

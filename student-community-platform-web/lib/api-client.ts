@@ -82,6 +82,8 @@ export const api = {
   swiper: () => pedir<{ tarjetas: TarjetaContenido[] }>("/contenido/swiper"),
   contenido: (id: string) => pedir<{ tarjeta: TarjetaContenido }>(`/contenido/${id}`),
   misPublicaciones: () => pedir<{ publicaciones: MiPublicacion[] }>("/contenido/mias"),
+  limitePublicaciones: () =>
+    pedir<{ usadas: number; limite: number | null; restantes: number | null }>("/contenido/limite"),
   editarContenido: (
     id: string,
     campos: { titulo?: string | null; cuerpo?: string; lugar?: string | null; fechaEvento?: string | null },

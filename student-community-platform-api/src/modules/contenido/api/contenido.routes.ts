@@ -4,6 +4,7 @@ import type { AppEnv } from "../../../env";
 import { requireRole, requireSesion } from "../../../shared/auth/middleware";
 import { validarJson } from "../../../shared/http/validate";
 import { ContenidoService } from "../core/contenido.service";
+import { limiteDiario } from "../core/limite-diario";
 import type { TipoContenido } from "../core/contenido.types";
 
 export const contenidoRoutes = new Hono<AppEnv>();
@@ -65,6 +66,12 @@ contenidoRoutes.get("/feed", requireSesion(), async (c) => {
   const cursor = cursorFecha && cursorId ? { fecha: cursorFecha, id: cursorId } : undefined;
   const tarjetas = await new ContenidoService(c.get("db")).feed({ usuarioId: session.usuarioId, tipo, cursor });
   return c.json({ tarjetas });
+});
+
+/** Cuántas publicaciones me quedan hoy (para avisar en los formularios). */
+contenidoRoutes.get("/limite", requireSesion(), async (c) => {
+  const s = c.get("session")!;
+  return c.json(await limiteDiario(c.get("db"), s.usuarioId, s.esCuentaOficial));
 });
 
 /** Lo que YO he publicado, con su estado. */

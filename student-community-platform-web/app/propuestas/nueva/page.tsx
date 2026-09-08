@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui/Boton";
+import { LimiteDiario } from "@/components/contenido/LimiteDiario";
 import { api, ApiError } from "@/lib/api-client";
 
 export default function NuevaPropuesta() {
@@ -29,6 +30,7 @@ export default function NuevaPropuesta() {
   return (
     <form onSubmit={enviar} className="mx-auto flex max-w-lg flex-col gap-4">
       <h1 className="text-3xl">Nueva propuesta</h1>
+      <LimiteDiario />
       <p className="text-sm text-tinta-suave">
         Plantea una acción concreta para que la comunidad la apoye (ej. una asamblea, una carta
         abierta, una jornada de apoyo).

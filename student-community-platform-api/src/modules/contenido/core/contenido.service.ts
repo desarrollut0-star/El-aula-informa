@@ -3,6 +3,7 @@ import { ContenidoRepository } from "./contenido.repository";
 import { TIPOS_SOLO_CUENTA_OFICIAL, TIPOS_CON_FLUJO_PROPIO, type TipoContenido } from "./contenido.types";
 import { publish } from "../../../shared/events/bus";
 import { AppError } from "../../../shared/http/error";
+import { asegurarLimiteDiario } from "./limite-diario";
 
 export class ContenidoService {
   private readonly repo: ContenidoRepository;
@@ -34,6 +35,7 @@ export class ContenidoService {
     if (input.cuerpo.trim().length === 0) {
       throw new AppError(400, "CUERPO_VACIO", "El contenido no puede estar vacío.");
     }
+    await asegurarLimiteDiario(this.db, input.autorId, input.esCuentaOficial);
 
     const contenido = await this.repo.crear(input);
     await publish(this.db, {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Boton } from "@/components/ui/Boton";
+import { LimiteDiario } from "@/components/contenido/LimiteDiario";
 import { api, ApiError } from "@/lib/api-client";
 import type { Categoria } from "@/lib/tipos";
 
@@ -45,6 +46,7 @@ export default function NuevaDenuncia() {
   return (
     <form onSubmit={enviar} className="mx-auto flex max-w-lg flex-col gap-4">
       <h1 className="text-3xl">Reportar una irregularidad</h1>
+      <LimiteDiario />
       <p className="text-sm text-tinta-suave">
         Cuéntanos qué pasó, con el mayor detalle posible. Alguien del equipo lo revisa antes de publicarlo.
       </p>
