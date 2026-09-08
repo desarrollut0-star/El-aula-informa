@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Boton } from "@/components/ui/Boton";
 import { supabase } from "@/lib/supabase";
+import { CLAVE_CIERRE_INACTIVIDAD } from "@/lib/sesion";
 
 const DOMINIO = process.env.NEXT_PUBLIC_INSTITUTIONAL_EMAIL_DOMAIN ?? "uthh.edu.mx";
 
@@ -22,6 +23,18 @@ export default function Acceso() {
   const [codigo, setCodigo] = useState("");
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [porInactividad, setPorInactividad] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(CLAVE_CIERRE_INACTIVIDAD)) {
+        setPorInactividad(true);
+        sessionStorage.removeItem(CLAVE_CIERRE_INACTIVIDAD);
+      }
+    } catch {
+      /* modo incógnito */
+    }
+  }, []);
 
   async function conGoogle() {
     setError(null);
@@ -74,6 +87,12 @@ export default function Acceso() {
 
   return (
     <div className="mx-auto max-w-sm">
+      {porInactividad && (
+        <div className="mb-4 border border-ocre bg-ocre-tenue p-3 text-sm text-ocre">
+          Cerramos tu sesión por <strong>15 minutos de inactividad</strong>. Vuelve a entrar
+          para continuar.
+        </div>
+      )}
       <h1 className="text-3xl">Accede con tu cuenta de la UTHH</h1>
 
       {modo === "google" ? (
