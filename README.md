@@ -15,17 +15,23 @@ La base de datos (PostgreSQL) vive en Supabase y la administra el SQL de
 
 ## Puesta en marcha local
 
+Los archivos de variables de entorno **no están en el repo** (tienen
+secretos). Pídelos a quien administra los secretos del equipo:
+
+- `student-community-platform-api/.dev.vars` (backend)
+- `student-community-platform-web/.env.local` (frontend)
+
 ```bash
 # Terminal 1 — backend
 cd student-community-platform-api
 npm install
-cp .dev.vars.example .dev.vars        # rellenar secretos
+# copiar aquí el archivo .dev.vars que te pasó el equipo
 npm run dev                            # http://localhost:8787
 
 # Terminal 2 — frontend
 cd student-community-platform-web
 npm install
-cp .env.local.example .env.local      # rellenar la publishable key de Supabase
+# copiar aquí el archivo .env.local que te pasó el equipo
 npm run dev                            # http://localhost:3000
 ```
 

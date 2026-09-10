@@ -9,6 +9,9 @@
 *.docx
 *.pdf
 
+# Variables de entorno reales para compartir con el equipo — NUNCA al repo
+/_envs-equipo/
+
 # Diagramas exportados (documentación, pesados)
 student-community-platform-api/docs/diagramas/
 
@@ -24,11 +27,13 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 
-# Secretos y variables de entorno (los .example SÍ se suben)
+# Secretos y variables de entorno — se comparten aparte con el equipo
 .dev.vars
+.dev.vars.example
 .env
 .env.local
 .env*.local
+.env.local.example
 .env.production
 .env.development
 

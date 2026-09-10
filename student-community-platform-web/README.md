@@ -26,19 +26,21 @@ lib/          api-client.ts · supabase.ts · tipos.ts · config.ts
 
 ## Variables de entorno
 
-Copiar `.env.local.example` a `.env.local`:
+El archivo `.env.local` lo comparte el equipo aparte (no está en el repo).
 
-| Variable | De dónde sale |
+| Variable | Qué es |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://rpfrexmdoigwxnstffun.supabase.co` (ya en el .example) |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys → Publishable (`sb_publishable_…`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto de Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key de Supabase (`sb_publishable_…`), solo para el login |
 | `NEXT_PUBLIC_API_URL` | local: `http://localhost:8787` · prod: `https://api.dominio.mx` |
+| `NEXT_PUBLIC_INSTITUTIONAL_EMAIL_DOMAIN` | `uthh.edu.mx` |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Nombre de la nube de Cloudinary (opcional) |
 
 ## Local
 
 ```bash
 npm install
-cp .env.local.example .env.local     # rellenar la publishable key
+# copiar aquí el archivo .env.local que te pasó el equipo
 npm run dev                           # http://localhost:3000
 ```
 

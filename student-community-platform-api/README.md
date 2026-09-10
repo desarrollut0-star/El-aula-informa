@@ -139,9 +139,11 @@ Front y back se sirven bajo el **mismo dominio con subdominios** (`dominio.mx` �
 ├── wrangler.toml
 ├── drizzle.config.ts
 ├── package.json
-├── tsconfig.json
-└── .dev.vars.example
+└── tsconfig.json
 ```
+
+> El archivo `.dev.vars` (con los secretos locales) **no está en el repo**;
+> lo comparte aparte quien administra los secretos del equipo.
 
 ### El contrato `AppModule`
 
@@ -244,10 +246,14 @@ Esta app es independiente (el frontend vive en `student-community-platform-web`)
 
 ```bash
 npm install
-cp .dev.vars.example .dev.vars   # rellenar DATABASE_URL, IDENTITY_PEPPER y
-                                  # WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
+# copiar el archivo .dev.vars que te pasó el equipo (no está en el repo)
 npm run dev                       # API en http://localhost:8787
 ```
+
+Variables del `.dev.vars`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`,
+`IDENTITY_PEPPER`, `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`,
+`FRONTEND_ORIGIN`, `INSTITUTIONAL_EMAIL_DOMAIN`, y opcionales `SUPABASE_SECRET_KEY`,
+`CLOUDINARY_*`, `OPENAI_API_KEY`.
 
 `npm run dev` (`scripts/dev.mjs`) carga las variables `WRANGLER_*` de `.dev.vars`
 antes de arrancar `wrangler dev`. Eso hace que el binding **HYPERDRIVE** enrute la
@@ -295,16 +301,19 @@ Como está dentro de un monorepo, ejecuta estos comandos **desde `.`**, o usa
 
 ## Variables de entorno
 
-Ver `.dev.vars.example`. Mínimas:
+El archivo `.dev.vars` lo comparte el equipo aparte (no está en el repo).
 
 | Variable | Descripción |
 |---|---|
 | `DATABASE_URL` | Cadena del pooler de Supabase (puerto 6543, `sslmode=require`) |
-| `AUTH_SECRET` | Secreto para firmar sesiones |
-| `FRONTEND_ORIGIN` | Origen permitido por CORS (URL de `../student-community-platform-web`) |
-| `INSTITUTIONAL_EMAIL_DOMAIN` | Dominio de correo aceptado en el alta (p. ej. `uthh.edu.mx`) |
-| `OPENAI_API_KEY` | Para la moderación automática (opcional; gratis) |
-| `R2_BUCKET` | Nombre del bucket de evidencia (binding en `wrangler.toml`) |
+| `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | Misma base, para el binding HYPERDRIVE en `wrangler dev` |
+| `SUPABASE_URL` / `SUPABASE_JWKS_URL` | Proyecto de Supabase; el Worker verifica el JWT contra el JWKS |
+| `IDENTITY_PEPPER` | Llave del HMAC de las matrículas (nunca se guarda en la BD) |
+| `FRONTEND_ORIGIN` | Origen permitido por CORS (URL del frontend) |
+| `INSTITUTIONAL_EMAIL_DOMAIN` | Dominio de correo aceptado (`uthh.edu.mx`) |
+| `SUPABASE_SECRET_KEY` | Solo si el Worker administra usuarios (opcional) |
+| `CLOUDINARY_*` | Imágenes del sistema (opcional) |
+| `OPENAI_API_KEY` | Moderación automática por IA (opcional; API gratuita) |
 
 ---
 
