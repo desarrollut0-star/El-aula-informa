@@ -38,9 +38,6 @@ crons = [
 #        el id:
 #   npx wrangler hyperdrive create comunidad-uthh \
 #     --connection-string="postgresql://postgres.rpfrexmdoigwxnstffun:<PASS>@aws-0-us-east-1.pooler.supabase.com:5432/postgres"
-"hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "9de3501668ee4e2a8ee6266f2e66051b"
-    }
-  ]
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "9de3501668ee4e2a8ee6266f2e66051b"
