@@ -93,6 +93,8 @@ export interface Notificacion {
   id: string;
   tipo: string;
   mensaje: string;
+  /** Publicación relacionada, si la hay: la notificación enlaza a ella. */
+  contenidoId: string | null;
   leidaEn: string | null;
   creadoEn: string;
 }

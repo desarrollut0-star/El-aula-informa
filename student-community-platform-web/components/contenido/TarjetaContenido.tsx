@@ -13,7 +13,7 @@ import { Colapsable } from "@/components/ui/Colapsable";
 import { Icono, type NombreIcono } from "@/components/ui/Iconos";
 import { PerfilHoverCard } from "./PerfilHoverCard";
 
-const ESTILO: Record<TipoContenido, { icono: NombreIcono; etiqueta: string; barra: string; chip: string }> = {
+export const ESTILO: Record<TipoContenido, { icono: NombreIcono; etiqueta: string; barra: string; chip: string }> = {
   testimonio: { icono: "cita", etiqueta: "Testimonio", barra: "before:bg-verde", chip: "bg-verde-tenue text-verde-oscuro" },
   aviso: { icono: "megafono", etiqueta: "Aviso", barra: "before:bg-ocre", chip: "bg-ocre-tenue text-ocre" },
   evento: { icono: "calendario", etiqueta: "Evento", barra: "before:bg-verde", chip: "bg-verde-tenue text-verde-oscuro" },

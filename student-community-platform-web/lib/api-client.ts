@@ -138,6 +138,9 @@ export const api = {
 
   // ---------- notificaciones ----------
   notificaciones: () => pedir<{ notificaciones: Notificacion[] }>("/notificaciones"),
+  notificacionesNoLeidas: () => pedir<{ total: number }>("/notificaciones/no-leidas"),
+  marcarNotificacionLeida: (id: string) => pedir<{ ok: true }>(`/notificaciones/${id}/leer`, { method: "POST" }),
+  marcarTodasLeidas: () => pedir<{ marcadas: number }>("/notificaciones/leer-todas", { method: "POST" }),
 };
 
 export { ApiError };

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSesion } from "@/lib/sesion";
 import { AvatarAlias } from "@/components/contenido/AvatarAlias";
 import { Icono, type NombreIcono } from "@/components/ui/Iconos";
+import { CampanaNotificaciones } from "./CampanaNotificaciones";
 
 const NAV_DENTRO = [
   { href: "/muro", txt: "Muro" },
@@ -55,6 +56,7 @@ export function Header() {
   }
 
   const alias = sesion?.alias ?? "Mi cuenta";
+  const verificada = sesion?.rol === "verificado";
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ocre bg-verde-oscuro text-blanco-papel shadow-[0_8px_24px_-16px_rgba(18,53,34,0.7)]">
@@ -96,58 +98,78 @@ export function Header() {
               })}
             </nav>
 
-            <div ref={ref} className="relative order-2 md:order-3 md:ml-auto">
-              <button
-                type="button"
-                onClick={() => setMenu((v) => !v)}
-                aria-expanded={menu}
-                aria-haspopup="menu"
-                className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-2.5 text-sm font-semibold transition-colors duration-200 ${
-                  menu ? "border-verde-linea/60 bg-verde/60" : "border-verde-linea/30 hover:bg-verde/40"
-                }`}
-              >
-                <AvatarAlias alias={sesion?.alias ?? null} anonimo={false} oficial={sesion?.esCuentaOficial} size={26} />
-                <span className="hidden max-w-[9rem] truncate sm:inline">{alias}</span>
-                <Icono
-                  nombre="chevron"
-                  grosor={2.2}
-                  className={`h-3.5 w-3.5 transition-transform duration-300 ease-suave ${menu ? "rotate-180" : ""}`}
-                />
-              </button>
+            <div className="order-2 flex items-center gap-1.5 md:order-3 md:ml-auto">
+              <CampanaNotificaciones />
 
-              {menu && (
-                <div
-                  role="menu"
-                  className="absolute right-0 top-full z-50 mt-2 w-56 origin-top-right animate-menu overflow-hidden rounded-xl border border-borde/80 bg-blanco-papel p-1.5 text-tinta shadow-flotante"
+              <div ref={ref} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenu((v) => !v)}
+                  aria-expanded={menu}
+                  aria-haspopup="menu"
+                  className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-2.5 text-sm font-semibold transition-colors duration-200 ${
+                    menu ? "border-verde-linea/60 bg-verde/60" : "border-verde-linea/30 hover:bg-verde/40"
+                  }`}
                 >
-                  <div className="px-2.5 pb-2 pt-1.5">
-                    <p className="truncate text-sm font-semibold text-verde-oscuro">{alias}</p>
-                    <p className="text-xs text-tinta-suave">
-                      {sesion?.rol === "verificado" ? "Cuenta verificada" : "Cuenta en modo solo lectura"}
-                    </p>
-                  </div>
-                  <div className="my-1 h-px bg-borde/70" />
-                  <ItemMenu href="/yo" icono="usuario" onElegir={() => setMenu(false)}>
-                    Mi cuenta
-                  </ItemMenu>
-                  <ItemMenu href="/mis-publicaciones" icono="lista" onElegir={() => setMenu(false)}>
-                    Mis publicaciones
-                  </ItemMenu>
-                  <ItemMenu href="/notificaciones" icono="campana" onElegir={() => setMenu(false)}>
-                    Notificaciones
-                  </ItemMenu>
-                  <div className="my-1 h-px bg-borde/70" />
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={salir}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-terracota transition-colors hover:bg-terracota-tenue"
+                  <AvatarAlias alias={sesion?.alias ?? null} anonimo={false} oficial={sesion?.esCuentaOficial} size={26} />
+                  <span className="hidden max-w-[9rem] truncate sm:inline">{alias}</span>
+                  <Icono
+                    nombre="chevron"
+                    grosor={2.2}
+                    className={`h-3.5 w-3.5 transition-transform duration-300 ease-suave ${menu ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {menu && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full z-50 mt-2 w-64 origin-top-right animate-menu overflow-hidden rounded-2xl border border-borde/80 bg-blanco-papel text-tinta shadow-flotante"
                   >
-                    <Icono nombre="salir" />
-                    Cerrar sesión
-                  </button>
-                </div>
-              )}
+                    <div className="flex items-center gap-3 bg-papel-alt/50 px-4 py-3.5">
+                      <AvatarAlias alias={sesion?.alias ?? null} anonimo={false} oficial={sesion?.esCuentaOficial} size={40} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-verde-oscuro">{alias}</p>
+                        <span
+                          className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            verificada ? "bg-verde-tenue text-verde-oscuro" : "bg-ocre-tenue text-ocre"
+                          }`}
+                        >
+                          <Icono nombre={verificada ? "check" : "candado"} className="h-3 w-3" grosor={2.4} />
+                          {verificada ? "Verificada" : "Solo lectura"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-1.5">
+                      <ItemMenu href="/yo" icono="usuario" descripcion="Perfil y privacidad" onElegir={() => setMenu(false)}>
+                        Mi cuenta
+                      </ItemMenu>
+                      <ItemMenu
+                        href="/mis-publicaciones"
+                        icono="lista"
+                        descripcion="Lo que has compartido"
+                        onElegir={() => setMenu(false)}
+                      >
+                        Mis publicaciones
+                      </ItemMenu>
+                    </div>
+
+                    <div className="border-t border-borde/70 p-1.5">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={salir}
+                        className="group flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm font-medium text-terracota transition-colors hover:bg-terracota-tenue"
+                      >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-terracota-tenue/70 transition-colors group-hover:bg-blanco-papel/60">
+                          <Icono nombre="salir" />
+                        </span>
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -176,11 +198,13 @@ export function Header() {
 function ItemMenu({
   href,
   icono,
+  descripcion,
   onElegir,
   children,
 }: {
   href: string;
   icono: NombreIcono;
+  descripcion: string;
   onElegir: () => void;
   children: React.ReactNode;
 }) {
@@ -189,10 +213,15 @@ function ItemMenu({
       href={href}
       role="menuitem"
       onClick={onElegir}
-      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors hover:bg-papel-alt"
+      className="group flex items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-papel-alt"
     >
-      <Icono nombre={icono} className="h-4 w-4 text-tinta-suave" />
-      {children}
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-papel-alt text-tinta-suave transition-colors group-hover:bg-verde-tenue group-hover:text-verde-oscuro">
+        <Icono nombre={icono} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-tinta">{children}</span>
+        <span className="block text-xs text-tinta-suave">{descripcion}</span>
+      </span>
     </Link>
   );
 }
