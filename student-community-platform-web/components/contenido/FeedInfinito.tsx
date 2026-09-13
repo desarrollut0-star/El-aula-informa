@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { TarjetaContenido as Tarjeta, TipoContenido } from "@/lib/tipos";
 import { api } from "@/lib/api-client";
 import { etiquetaDia } from "@/lib/fechas";
+import { EsqueletoTarjeta } from "@/components/ui/Esqueleto";
+import { Icono } from "@/components/ui/Iconos";
 import { TarjetaContenido } from "./TarjetaContenido";
 
 /**
@@ -48,7 +50,15 @@ export function FeedInfinito({
   }
 
   if (tarjetas.length === 0) {
-    return <p className="text-tinta-suave">Todavía no hay publicaciones.</p>;
+    return (
+      <div className="tarjeta flex animate-aparecer flex-col items-center gap-2 px-6 py-12 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-verde-tenue text-verde-oscuro">
+          <Icono nombre="lista" className="h-5 w-5" />
+        </span>
+        <p className="font-semibold text-verde-oscuro">Todavía no hay publicaciones</p>
+        <p className="text-sm text-tinta-suave">Cuando la comunidad publique algo, aparecerá aquí.</p>
+      </div>
+    );
   }
 
   // Agrupar por día conservando el orden.
@@ -64,16 +74,31 @@ export function FeedInfinito({
     <div className="flex flex-col gap-8">
       {grupos.map((g) => (
         <section key={g.dia + g.items[0]!.id} className="flex flex-col gap-4">
-          <h3 className="sticky top-16 z-10 -mx-1 bg-papel/95 px-1 py-1 text-xs font-bold uppercase tracking-wide text-tinta-suave backdrop-blur">
-            {g.dia}
-          </h3>
-          {g.items.map((t) => (
-            <TarjetaContenido key={t.id} tarjeta={t} onEliminada={quitar} />
+          <div className="pointer-events-none sticky top-[calc(var(--alto-header)+0.5rem)] z-10 flex justify-center">
+            <h3 className="rounded-full border border-borde/70 bg-papel/90 px-3 py-1 font-sans text-[11px] font-semibold uppercase tracking-wider text-tinta-suave shadow-tarjeta backdrop-blur-sm">
+              {g.dia}
+            </h3>
+          </div>
+          {g.items.map((t, i) => (
+            <div key={t.id} className="animate-aparecer" style={{ animationDelay: `${Math.min(i, 4) * 45}ms` }}>
+              <TarjetaContenido tarjeta={t} onEliminada={quitar} />
+            </div>
           ))}
         </section>
       ))}
-      <div ref={centinela} className="py-4 text-center text-sm text-tinta-suave">
-        {cargando ? "Cargando más…" : agotado ? "Ya viste todo." : ""}
+
+      <div ref={centinela} aria-live="polite">
+        {cargando ? (
+          <EsqueletoTarjeta />
+        ) : agotado ? (
+          <div className="flex items-center gap-3 py-2 text-xs text-tinta-suave">
+            <span className="h-px flex-1 bg-borde" />
+            Estás al día
+            <span className="h-px flex-1 bg-borde" />
+          </div>
+        ) : (
+          <div className="h-4" />
+        )}
       </div>
     </div>
   );

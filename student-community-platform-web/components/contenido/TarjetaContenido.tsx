@@ -9,16 +9,18 @@ import { haceCuanto, fechaEvento } from "@/lib/fechas";
 import { NivelPill } from "@/components/ui/NivelPill";
 import { BotonReportar } from "@/components/ui/BotonReportar";
 import { Boton } from "@/components/ui/Boton";
+import { Colapsable } from "@/components/ui/Colapsable";
+import { Icono, type NombreIcono } from "@/components/ui/Iconos";
 import { PerfilHoverCard } from "./PerfilHoverCard";
 
-const ESTILO: Record<TipoContenido, { icono: string; etiqueta: string; acento: string; fondo: string }> = {
-  testimonio: { icono: "🗣️", etiqueta: "Testimonio", acento: "border-l-verde", fondo: "bg-verde-tenue text-verde-oscuro" },
-  aviso: { icono: "📣", etiqueta: "Aviso", acento: "border-l-ocre", fondo: "bg-ocre-tenue text-ocre" },
-  evento: { icono: "📅", etiqueta: "Evento", acento: "border-l-verde", fondo: "bg-verde-tenue text-verde-oscuro" },
-  novedad: { icono: "📰", etiqueta: "Novedad", acento: "border-l-verde-linea", fondo: "bg-verde-tenue text-verde-oscuro" },
-  propuesta: { icono: "💡", etiqueta: "Propuesta", acento: "border-l-terracota", fondo: "bg-terracota-tenue text-terracota" },
-  encuesta: { icono: "🗳️", etiqueta: "Encuesta", acento: "border-l-ocre", fondo: "bg-ocre-tenue text-ocre" },
-  denuncia: { icono: "📮", etiqueta: "Reporte", acento: "border-l-terracota", fondo: "bg-terracota-tenue text-terracota" },
+const ESTILO: Record<TipoContenido, { icono: NombreIcono; etiqueta: string; barra: string; chip: string }> = {
+  testimonio: { icono: "cita", etiqueta: "Testimonio", barra: "before:bg-verde", chip: "bg-verde-tenue text-verde-oscuro" },
+  aviso: { icono: "megafono", etiqueta: "Aviso", barra: "before:bg-ocre", chip: "bg-ocre-tenue text-ocre" },
+  evento: { icono: "calendario", etiqueta: "Evento", barra: "before:bg-verde", chip: "bg-verde-tenue text-verde-oscuro" },
+  novedad: { icono: "periodico", etiqueta: "Novedad", barra: "before:bg-verde-linea", chip: "bg-verde-tenue text-verde-oscuro" },
+  propuesta: { icono: "foco", etiqueta: "Propuesta", barra: "before:bg-terracota", chip: "bg-terracota-tenue text-terracota" },
+  encuesta: { icono: "grafica", etiqueta: "Encuesta", barra: "before:bg-ocre", chip: "bg-ocre-tenue text-ocre" },
+  denuncia: { icono: "escudo", etiqueta: "Reporte", barra: "before:bg-terracota", chip: "bg-terracota-tenue text-terracota" },
 };
 
 export function TarjetaContenido({
@@ -59,13 +61,17 @@ export function TarjetaContenido({
       document.removeEventListener("keydown", esc);
     };
   }, [menu]);
+
   const [titulo, setTitulo] = useState(tarjeta.titulo ?? "");
   const [cuerpo, setCuerpo] = useState(tarjeta.cuerpo);
   const [textoVisible, setTextoVisible] = useState({ titulo: tarjeta.titulo, cuerpo: tarjeta.cuerpo });
   const [eliminado, setEliminado] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function reaccionar(aFavor: boolean) {
+    // Se ignoran clics mientras hay una reacción en curso, sin deshabilitar
+    // el botón: así no parpadea la opacidad en cada toque.
     if (ocupado || !puedeInteractuar) return;
     const previo = miReaccion;
     const destino: boolean | null = previo === aFavor ? null : aFavor;
@@ -106,8 +112,11 @@ export function TarjetaContenido({
     setOcupado(true);
     try {
       await api.eliminarContenido(tarjeta.id);
-      setEliminado(true);
-      onEliminada?.(tarjeta.id);
+      setSaliendo(true);
+      setTimeout(() => {
+        setEliminado(true);
+        onEliminada?.(tarjeta.id);
+      }, 220);
     } catch {
       setError("No se pudo eliminar.");
       setOcupado(false);
@@ -116,7 +125,7 @@ export function TarjetaContenido({
 
   if (eliminado) {
     return (
-      <p className="border border-dashed border-borde bg-papel-alt p-4 text-sm text-tinta-suave">
+      <p className="animate-aparecer-suave rounded-xl border border-dashed border-borde bg-papel-alt/60 p-4 text-sm text-tinta-suave">
         Eliminaste esta publicación.
       </p>
     );
@@ -126,16 +135,25 @@ export function TarjetaContenido({
   const subtitulo = anonimo ? null : oficial ? "Cuenta oficial" : (tarjeta.autorPrograma ?? "Comunidad UTHH");
 
   return (
-    <article className={`border border-l-4 border-borde bg-blanco-papel p-5 ${e.acento} ${esTestimonio ? "pl-6" : ""}`}>
+    <article
+      className={`tarjeta relative p-5 transition-[box-shadow,opacity,transform] duration-300 ease-suave hover:shadow-elevada before:absolute before:bottom-5 before:left-0 before:top-5 before:w-[3px] before:rounded-r-full ${e.barra} ${
+        saliendo ? "scale-[0.98] opacity-0" : ""
+      }`}
+    >
       <header className="mb-3 flex items-start gap-3">
-        <PerfilHoverCard alias={tarjeta.autorAlias} programa={tarjeta.autorPrograma} anonimo={anonimo} oficial={oficial} />
+        <PerfilHoverCard
+          alias={tarjeta.autorAlias}
+          programa={tarjeta.autorPrograma}
+          anonimo={anonimo}
+          oficial={oficial}
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className={anonimo ? "font-semibold italic text-tinta-suave" : "font-semibold text-verde-oscuro"}>
               {nombre}
             </span>
             {oficial && !anonimo && (
-              <span className="rounded bg-verde-oscuro px-1.5 py-0.5 text-[10px] font-bold uppercase text-blanco-papel">
+              <span className="rounded-full bg-verde-oscuro px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blanco-papel">
                 Oficial
               </span>
             )}
@@ -147,31 +165,54 @@ export function TarjetaContenido({
           </div>
         </div>
 
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${e.fondo}`}>
-          <span aria-hidden>{e.icono}</span> {e.etiqueta}
+        <span
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${e.chip}`}
+        >
+          <Icono nombre={e.icono} className="h-3.5 w-3.5" grosor={2} />
+          {e.etiqueta}
         </span>
 
         {puedoGestionar && !editando && (
-          <div ref={menuRef} className="relative shrink-0">
+          <div ref={menuRef} className="relative -mr-1.5 -mt-0.5 shrink-0">
             <button
+              type="button"
               onClick={() => setMenu((v) => !v)}
-              className="rounded px-1.5 text-lg leading-none text-tinta-suave hover:bg-papel-alt"
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-tinta-suave transition-colors hover:bg-papel-alt hover:text-tinta ${
+                menu ? "bg-papel-alt text-tinta" : ""
+              }`}
               aria-label="Opciones"
+              aria-expanded={menu}
+              aria-haspopup="menu"
             >
-              ⋯
+              <Icono nombre="mas" className="h-5 w-5" grosor={3} />
             </button>
             {menu && (
-              <div className="absolute right-0 z-20 mt-1 w-36 rounded border border-borde bg-blanco-papel py-1 text-sm shadow-lg">
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-20 mt-1 w-40 origin-top-right animate-menu rounded-xl border border-borde/80 bg-blanco-papel p-1 text-sm shadow-flotante"
+              >
                 <button
-                  onClick={() => { setMenu(false); setEditando(true); }}
-                  className="block w-full px-3 py-1.5 text-left hover:bg-papel-alt"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false);
+                    setEditando(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-papel-alt"
                 >
+                  <Icono nombre="pluma" className="h-4 w-4 text-tinta-suave" />
                   Editar
                 </button>
                 <button
-                  onClick={() => { setMenu(false); void eliminar(); }}
-                  className="block w-full px-3 py-1.5 text-left text-terracota hover:bg-papel-alt"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false);
+                    void eliminar();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-terracota transition-colors hover:bg-terracota-tenue"
                 >
+                  <Icono nombre="basura" className="h-4 w-4" />
                   Eliminar
                 </button>
               </div>
@@ -181,24 +222,24 @@ export function TarjetaContenido({
       </header>
 
       {(tarjeta.fijado || tarjeta.noVerificada || tarjeta.categoriaDenuncia || tarjeta.encuestaCerrada) && (
-        <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {tarjeta.fijado && (
-            <span className="rounded border border-terracota bg-terracota-tenue px-2 py-0.5 text-[11px] font-bold uppercase text-terracota">
+            <span className="rounded-full border border-terracota/40 bg-terracota-tenue px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-terracota">
               Fijado
             </span>
           )}
           {tarjeta.categoriaDenuncia && (
-            <span className="rounded border border-borde bg-papel-alt px-2 py-0.5 text-[11px] font-bold uppercase text-tinta-suave">
+            <span className="rounded-full border border-borde bg-papel-alt px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-tinta-suave">
               {tarjeta.categoriaDenuncia}
             </span>
           )}
           {tarjeta.noVerificada && (
-            <span className="rounded border border-tinta-suave bg-papel-alt px-2 py-0.5 text-[11px] font-bold uppercase text-tinta-suave">
+            <span className="rounded-full border border-tinta-suave/40 bg-papel-alt px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-tinta-suave">
               Sin confirmar
             </span>
           )}
           {tarjeta.encuestaCerrada && (
-            <span className="rounded border border-borde bg-papel-alt px-2 py-0.5 text-[11px] font-bold uppercase text-tinta-suave">
+            <span className="rounded-full border border-borde bg-papel-alt px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-tinta-suave">
               Encuesta cerrada
             </span>
           )}
@@ -207,7 +248,7 @@ export function TarjetaContenido({
       )}
 
       {editando ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex animate-aparecer flex-col gap-2">
           {!esTestimonio && (
             <input
               value={titulo}
@@ -222,65 +263,86 @@ export function TarjetaContenido({
             onChange={(ev) => setCuerpo(ev.target.value)}
             rows={4}
             maxLength={4000}
-            className="border border-borde bg-blanco-papel px-3 py-2 text-sm"
+            className="resize-y border border-borde bg-blanco-papel px-3 py-2 text-sm leading-relaxed"
           />
-          {error && <p className="text-sm text-terracota">{error}</p>}
-          <div className="flex gap-2">
-            <Boton onClick={guardarEdicion} disabled={ocupado || !cuerpo.trim()}>
-              {ocupado ? "Guardando…" : "Guardar"}
-            </Boton>
+          <Colapsable abierto={Boolean(error)}>
+            <p className="text-sm text-terracota">{error}</p>
+          </Colapsable>
+          <div className="flex justify-end gap-2">
             <Boton
-              variante="secundario"
-              onClick={() => { setEditando(false); setTitulo(tarjeta.titulo ?? ""); setCuerpo(tarjeta.cuerpo); }}
+              variante="fantasma"
+              tamano="chico"
+              onClick={() => {
+                setEditando(false);
+                setTitulo(tarjeta.titulo ?? "");
+                setCuerpo(tarjeta.cuerpo);
+                setError(null);
+              }}
             >
               Cancelar
+            </Boton>
+            <Boton tamano="chico" onClick={guardarEdicion} disabled={ocupado || !cuerpo.trim()}>
+              {ocupado ? "Guardando…" : "Guardar cambios"}
             </Boton>
           </div>
         </div>
       ) : (
         <>
           {textoVisible.titulo && !esTestimonio && (
-            <h3 className="mb-1 font-display text-xl font-bold text-verde-oscuro">{textoVisible.titulo}</h3>
+            <h3 className="mb-1.5 text-xl leading-snug">{textoVisible.titulo}</h3>
           )}
-          <p className={`whitespace-pre-line text-[15px] leading-relaxed text-tinta ${esTestimonio ? "italic" : ""}`}>
-            {esTestimonio ? `“${textoVisible.cuerpo}”` : textoVisible.cuerpo}
-          </p>
+          {esTestimonio ? (
+            <blockquote className="relative pl-6 text-[15px] italic leading-relaxed text-tinta">
+              <Icono nombre="cita" className="absolute left-0 top-1 h-4 w-4 text-verde-linea" grosor={2.2} />
+              <span className="whitespace-pre-line break-words">{textoVisible.cuerpo}</span>
+            </blockquote>
+          ) : (
+            <p className="whitespace-pre-line break-words text-[15px] leading-relaxed text-tinta">
+              {textoVisible.cuerpo}
+            </p>
+          )}
         </>
       )}
 
       {(tarjeta.fechaEvento || tarjeta.lugar) && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-borde pt-2 text-xs text-tinta-suave">
-          {tarjeta.fechaEvento && <span>🗓️ {fechaEvento(tarjeta.fechaEvento)}</span>}
-          {tarjeta.lugar && <span>📍 {tarjeta.lugar}</span>}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tarjeta.fechaEvento && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-papel-alt/70 px-2.5 py-1.5 text-xs text-tinta">
+              <Icono nombre="calendario" className="h-3.5 w-3.5 text-verde" />
+              {fechaEvento(tarjeta.fechaEvento)}
+            </span>
+          )}
+          {tarjeta.lugar && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-papel-alt/70 px-2.5 py-1.5 text-xs text-tinta">
+              <Icono nombre="ubicacion" className="h-3.5 w-3.5 text-verde" />
+              {tarjeta.lugar}
+            </span>
+          )}
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-borde pt-3 text-xs">
-        <button
-          type="button"
-          disabled={!puedeInteractuar || ocupado}
+      <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-borde/70 pt-3">
+        <Reaccion
+          tipo="apoyo"
+          activa={miReaccion === true}
+          cuenta={apoyos}
+          deshabilitada={!puedeInteractuar}
           onClick={() => reaccionar(true)}
-          className={`rounded-full border px-2.5 py-1 font-semibold transition-colors disabled:opacity-40 ${
-            miReaccion === true ? "border-verde bg-verde text-blanco-papel" : "border-borde text-tinta-suave hover:border-verde"
-          }`}
-        >
-          👍 {apoyos}
-        </button>
-        <button
-          type="button"
-          disabled={!puedeInteractuar || ocupado}
+        />
+        <Reaccion
+          tipo="rechazo"
+          activa={miReaccion === false}
+          cuenta={rechazos}
+          deshabilitada={!puedeInteractuar}
           onClick={() => reaccionar(false)}
-          className={`rounded-full border px-2.5 py-1 font-semibold transition-colors disabled:opacity-40 ${
-            miReaccion === false ? "border-terracota bg-terracota text-blanco-papel" : "border-borde text-tinta-suave hover:border-terracota"
-          }`}
-        >
-          👎 {rechazos}
-        </button>
+        />
         <Link
           href={`/contenido/${tarjeta.id}`}
-          className="rounded-full border border-borde px-2.5 py-1 font-semibold text-tinta-suave hover:border-verde"
+          className="inline-flex items-center gap-1.5 rounded-full border border-borde px-3 py-1.5 text-xs font-semibold text-tinta-suave transition-colors duration-200 hover:border-verde hover:text-verde"
         >
-          💬 {tarjeta.totalComentarios} · Comentar
+          <Icono nombre="comentario" className="h-4 w-4" />
+          <span className="tabular-nums">{tarjeta.totalComentarios}</span>
+          <span className="hidden sm:inline">Comentarios</span>
         </Link>
         <span className="ml-auto">
           <BotonReportar objetivo="contenido" objetivoId={tarjeta.id} />
@@ -293,5 +355,44 @@ export function TarjetaContenido({
         </p>
       )}
     </article>
+  );
+}
+
+function Reaccion({
+  tipo,
+  activa,
+  cuenta,
+  deshabilitada,
+  onClick,
+}: {
+  tipo: "apoyo" | "rechazo";
+  activa: boolean;
+  cuenta: number;
+  deshabilitada: boolean;
+  onClick: () => void;
+}) {
+  const apoyo = tipo === "apoyo";
+  const tono = activa
+    ? apoyo
+      ? "border-verde bg-verde text-blanco-papel"
+      : "border-terracota bg-terracota text-blanco-papel"
+    : apoyo
+      ? "border-borde text-tinta-suave hover:border-verde hover:text-verde"
+      : "border-borde text-tinta-suave hover:border-terracota hover:text-terracota";
+
+  return (
+    <button
+      type="button"
+      disabled={deshabilitada}
+      onClick={onClick}
+      aria-pressed={activa}
+      aria-label={apoyo ? `Apoyar (${cuenta})` : `Rechazar (${cuenta})`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-[background-color,border-color,color,transform] duration-200 ease-suave active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 ${tono}`}
+    >
+      <Icono nombre="pulgar" className={`h-4 w-4 ${apoyo ? "" : "rotate-180"}`} />
+      <span key={cuenta} className="inline-block animate-conteo tabular-nums">
+        {cuenta}
+      </span>
+    </button>
   );
 }

@@ -2,28 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  scroll-behavior: smooth;
+/* Alto del header fijo: lo usan los encabezados "pegajosos" del muro. */
+:root {
+  --alto-header: 6.125rem;
+}
+@media (min-width: 768px) {
+  :root {
+    --alto-header: 4.125rem;
+  }
 }
 
-body {
-  @apply bg-papel text-tinta font-sans;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    /* Evita el brinco lateral cuando aparece la barra de scroll al desplegar contenido. */
+    scrollbar-gutter: stable;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-papel font-sans text-tinta antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display font-bold tracking-tight text-verde-oscuro;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    @apply bg-verde-tenue text-verde-oscuro;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme("colors.verde.DEFAULT");
+    outline-offset: 2px;
+  }
+
+  /* Campos de formulario: mismo trato en todas las páginas. */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    @apply rounded-lg transition-[border-color,box-shadow] duration-200;
+  }
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  textarea:focus,
+  select:focus {
+    @apply border-verde outline-none;
+    box-shadow: 0 0 0 3px rgba(31, 93, 62, 0.15);
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: theme("colors.verde.DEFAULT");
+  }
 }
 
-h1,
-h2,
-h3,
-h4 {
-  @apply font-display font-bold text-verde-oscuro;
-  text-wrap: balance;
+@layer components {
+  .tarjeta {
+    @apply rounded-xl border border-borde/80 bg-blanco-papel shadow-tarjeta;
+  }
+
+  .esqueleto {
+    background: linear-gradient(90deg, #e5e2d0 0%, #efede2 50%, #e5e2d0 100%);
+    background-size: 200% 100%;
+    animation: brillo 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes brillo {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 }

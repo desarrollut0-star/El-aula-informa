@@ -6,7 +6,8 @@ import type { TarjetaContenido as Tarjeta, TipoContenido } from "@/lib/tipos";
 import { api } from "@/lib/api-client";
 import { useSesion } from "@/lib/sesion";
 import { FeedInfinito } from "./FeedInfinito";
-import { Boton } from "@/components/ui/Boton";
+import { clasesBoton } from "@/components/ui/Boton";
+import { EsqueletoLista } from "@/components/ui/Esqueleto";
 
 /**
  * Muro cargado desde el cliente (con el token de sesión). Reemplaza el
@@ -35,18 +36,16 @@ export function MuroCliente({
     };
   }, [tipo]);
 
-  if (tarjetas === null) return <p className="text-tinta-suave">Cargando muro…</p>;
-
   return (
     <div className="flex flex-col gap-4">
       {accionHref && accionTexto && puedeInteractuar && (
         <div>
-          <Link href={accionHref}>
-            <Boton>{accionTexto}</Boton>
+          <Link href={accionHref} className={clasesBoton("primario")}>
+            {accionTexto}
           </Link>
         </div>
       )}
-      <FeedInfinito tarjetasIniciales={tarjetas} tipo={tipo} />
+      {tarjetas === null ? <EsqueletoLista /> : <FeedInfinito tarjetasIniciales={tarjetas} tipo={tipo} />}
     </div>
   );
 }
