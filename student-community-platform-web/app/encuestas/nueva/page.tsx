@@ -13,6 +13,7 @@ const MIN_OPCIONES = 2;
 
 export default function NuevaEncuesta() {
   const router = useRouter();
+  const [titulo, setTitulo] = useState("");
   const [pregunta, setPregunta] = useState("");
   const [opciones, setOpciones] = useState(["", ""]);
   const [cierra, setCierra] = useState("");
@@ -44,6 +45,7 @@ export default function NuevaEncuesta() {
     setError(null);
     try {
       await api.publicarEncuesta({
+        titulo,
         cuerpo: pregunta,
         // <input type="datetime-local"> da "2026-09-12T10:00"; a ISO con zona.
         cierraEn: new Date(cierra).toISOString(),
@@ -66,6 +68,18 @@ export default function NuevaEncuesta() {
           Una consulta rápida a la comunidad. Cada quien vota una sola vez (puede cambiar su voto mientras siga
           abierta).
         </p>
+
+        <label className="flex flex-col gap-1 text-sm">
+          Título
+          <input
+            required
+            maxLength={140}
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            placeholder="Ej. Horario de la próxima asamblea"
+            className="border border-borde bg-blanco-papel px-3 py-2"
+          />
+        </label>
 
         <label className="flex flex-col gap-1 text-sm">
           Pregunta

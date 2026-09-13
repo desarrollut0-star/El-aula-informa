@@ -3,17 +3,16 @@ import type { Context } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "../../../env";
 import { requireRole, requireSesion } from "../../../shared/auth/middleware";
-import { validarJson } from "../../../shared/http/validate";
+import { validarJson, validarParam } from "../../../shared/http/validate";
 import { ContenidoService } from "../core/contenido.service";
 import { limiteDiario } from "../core/limite-diario";
 import type { TipoContenido } from "../core/contenido.types";
 
 export const contenidoRoutes = new Hono<AppEnv>();
 
-/** Arma el servicio con las 3 capas de moderación configuradas en el Worker. */
+/** Arma el servicio con las capas de moderación configuradas en el Worker. */
 function servicio(c: Context<AppEnv>) {
   return new ContenidoService(c.get("db"), {
-    openaiKey: c.env.OPENAI_API_KEY,
     huggingfaceKey: c.env.HUGGINGFACE_API_KEY,
     modeloMlUrl: c.env.MODELO_ML_URL,
     modeloMlToken: c.env.MODELO_ML_TOKEN,
@@ -50,7 +49,7 @@ const editarSchema = z
 const editarComentarioSchema = z.object({ cuerpo: z.string().min(1).max(2000) });
 
 const encuestaSchema = z.object({
-  titulo: z.string().max(140).optional(),
+  titulo: z.string().min(1).max(140),
   cuerpo: z.string().min(1).max(2000),
   esAnonimo: z.boolean().default(false),
   cierraEn: z.string().datetime(),
@@ -58,6 +57,12 @@ const encuestaSchema = z.object({
 });
 
 const votarSchema = z.object({ opcionId: z.string().uuid() });
+
+// `:id` / `:cid` deben ser UUID — si no, que sea un 400 limpio y no un
+// error de Postgres sin manejar (ej. alguien visita /contenido/encuestas
+// con GET y cae en la ruta genérica "/:id").
+const idParamSchema = z.object({ id: z.string().uuid() });
+const idCidParamSchema = z.object({ id: z.string().uuid(), cid: z.string().uuid() });
 
 /** Publicar cualquier tipo de contenido del muro (menos denuncia/encuesta). */
 contenidoRoutes.post("/", requireRole(), validarJson(publicarSchema), async (c) => {
@@ -134,14 +139,14 @@ contenidoRoutes.post("/reacciones", requireRole(), validarJson(reaccionSchema), 
 });
 
 /** Detalle de una tarjeta. */
-contenidoRoutes.get("/:id", requireSesion(), async (c) => {
+contenidoRoutes.get("/:id", requireSesion(), validarParam(idParamSchema), async (c) => {
   const session = c.get("session")!;
   const tarjeta = await servicio(c).porId(c.req.param("id"), session.usuarioId);
   return c.json({ tarjeta });
 });
 
 /** Opciones de una encuesta, con el conteo y si YO ya voté cuál. */
-contenidoRoutes.get("/:id/opciones", requireSesion(), async (c) => {
+contenidoRoutes.get("/:id/opciones", requireSesion(), validarParam(idParamSchema), async (c) => {
   const session = c.get("session")!;
   const opciones = await servicio(c).opciones(
     c.req.param("id"),
@@ -151,7 +156,7 @@ contenidoRoutes.get("/:id/opciones", requireSesion(), async (c) => {
 });
 
 /** Votar en una encuesta (o cambiar mi voto mientras siga abierta). */
-contenidoRoutes.post("/:id/votar", requireRole(), validarJson(votarSchema), async (c) => {
+contenidoRoutes.post("/:id/votar", requireRole(), validarParam(idParamSchema), validarJson(votarSchema), async (c) => {
   const session = c.get("session")!;
   const opciones = await servicio(c).votar(
     c.req.param("id"),
@@ -162,7 +167,7 @@ contenidoRoutes.post("/:id/votar", requireRole(), validarJson(votarSchema), asyn
 });
 
 /** Editar la propia publicación. */
-contenidoRoutes.patch("/:id", requireRole(), validarJson(editarSchema), async (c) => {
+contenidoRoutes.patch("/:id", requireRole(), validarParam(idParamSchema), validarJson(editarSchema), async (c) => {
   const session = c.get("session")!;
   const d = c.req.valid("json");
   const fila = await servicio(c).editar(c.req.param("id"), session.usuarioId, {
@@ -175,21 +180,21 @@ contenidoRoutes.patch("/:id", requireRole(), validarJson(editarSchema), async (c
 });
 
 /** Borrar la propia publicación. */
-contenidoRoutes.delete("/:id", requireRole(), async (c) => {
+contenidoRoutes.delete("/:id", requireRole(), validarParam(idParamSchema), async (c) => {
   const session = c.get("session")!;
   const r = await servicio(c).eliminar(c.req.param("id"), session.usuarioId);
   return c.json(r);
 });
 
 /** Hilo de comentarios de una tarjeta. */
-contenidoRoutes.get("/:id/comentarios", requireSesion(), async (c) => {
+contenidoRoutes.get("/:id/comentarios", requireSesion(), validarParam(idParamSchema), async (c) => {
   const session = c.get("session")!;
   const comentarios = await servicio(c).comentarios(c.req.param("id"), session.usuarioId);
   return c.json({ comentarios });
 });
 
 /** Comentar en una tarjeta (o responder, con padreId). */
-contenidoRoutes.post("/:id/comentarios", requireRole(), validarJson(comentarSchema), async (c) => {
+contenidoRoutes.post("/:id/comentarios", requireRole(), validarParam(idParamSchema), validarJson(comentarSchema), async (c) => {
   const session = c.get("session")!;
   const { cuerpo, padreId } = c.req.valid("json");
   const comentario = await servicio(c).comentar({
@@ -203,7 +208,12 @@ contenidoRoutes.post("/:id/comentarios", requireRole(), validarJson(comentarSche
 });
 
 /** Editar el propio comentario. */
-contenidoRoutes.patch("/:id/comentarios/:cid", requireRole(), validarJson(editarComentarioSchema), async (c) => {
+contenidoRoutes.patch(
+  "/:id/comentarios/:cid",
+  requireRole(),
+  validarParam(idCidParamSchema),
+  validarJson(editarComentarioSchema),
+  async (c) => {
   const session = c.get("session")!;
   const fila = await servicio(c).editarComentario(
     c.req.param("cid"),
@@ -214,7 +224,7 @@ contenidoRoutes.patch("/:id/comentarios/:cid", requireRole(), validarJson(editar
 });
 
 /** Borrar el propio comentario. */
-contenidoRoutes.delete("/:id/comentarios/:cid", requireRole(), async (c) => {
+contenidoRoutes.delete("/:id/comentarios/:cid", requireRole(), validarParam(idCidParamSchema), async (c) => {
   const session = c.get("session")!;
   const r = await servicio(c).eliminarComentario(c.req.param("cid"), session.usuarioId);
   return c.json(r);

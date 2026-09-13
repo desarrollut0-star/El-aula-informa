@@ -13,11 +13,9 @@ export interface Bindings {
   /** Cloudinary. */
   CLOUDINARY_API_KEY?: string;
   CLOUDINARY_API_SECRET?: string;
-  /** Moderación automática (opcional). */
-  OPENAI_API_KEY?: string;
-  /** Segunda capa de moderación con un modelo ML de Hugging Face (opcional). */
+  /** Moderación automática con un modelo ML de Hugging Face (opcional). */
   HUGGINGFACE_API_KEY?: string;
-  /** Tercera capa: LLM propio del equipo en Python (ver moderacion-ml/), opcional. */
+  /** LLM propio del equipo en Python (ver moderacion-ml/), opcional. */
   MODELO_ML_URL?: string;
   /** Token compartido para que solo el Worker pueda llamar al modelo propio. */
   MODELO_ML_TOKEN?: string;

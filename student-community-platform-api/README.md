@@ -98,7 +98,7 @@ Front y back se sirven bajo el **mismo dominio con subdominios** (`dominio.mx` �
 | Bus de eventos | Patrón *outbox* en PostgreSQL (sin costo) o Cloudflare Queues (plan Workers Paid) |
 | Tareas programadas | Cloudflare Cron Triggers (llaman funciones de la base) |
 | Archivos | **Cloudinary** (imágenes del sistema y evidencia `private`) |
-| Moderación automática | Filtro local de palabras + OpenAI Moderation API / Perspective API (gratis) |
+| Moderación automática | Filtro local de palabras + Hugging Face + LLM propio en Python (`moderacion-ml/`) |
 | Tests | [Vitest](https://vitest.dev) + `@cloudflare/vitest-pool-workers` |
 | Lint / formato | ESLint + Prettier |
 | CLI de despliegue | [Wrangler](https://developers.cloudflare.com/workers/wrangler/) |
@@ -253,7 +253,7 @@ npm run dev                       # API en http://localhost:8787
 Variables del `.dev.vars`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`,
 `IDENTITY_PEPPER`, `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`,
 `FRONTEND_ORIGIN`, `INSTITUTIONAL_EMAIL_DOMAIN`, y opcionales `SUPABASE_SECRET_KEY`,
-`CLOUDINARY_*`, `OPENAI_API_KEY`.
+`CLOUDINARY_*`, `HUGGINGFACE_API_KEY`, `MODELO_ML_URL`/`MODELO_ML_TOKEN`.
 
 `npm run dev` (`scripts/dev.mjs`) carga las variables `WRANGLER_*` de `.dev.vars`
 antes de arrancar `wrangler dev`. Eso hace que el binding **HYPERDRIVE** enrute la
@@ -286,7 +286,9 @@ Antes de `npm run deploy` hay que crear el Hyperdrive real y poner su `id` en
 # Secretos en producción (una sola vez por cada uno)
 wrangler secret put DATABASE_URL
 wrangler secret put AUTH_SECRET
-wrangler secret put OPENAI_API_KEY
+wrangler secret put HUGGINGFACE_API_KEY
+wrangler secret put MODELO_ML_URL
+wrangler secret put MODELO_ML_TOKEN
 
 # Publicar
 npm run deploy
@@ -313,7 +315,8 @@ El archivo `.dev.vars` lo comparte el equipo aparte (no está en el repo).
 | `INSTITUTIONAL_EMAIL_DOMAIN` | Dominio de correo aceptado (`uthh.edu.mx`) |
 | `SUPABASE_SECRET_KEY` | Solo si el Worker administra usuarios (opcional) |
 | `CLOUDINARY_*` | Imágenes del sistema (opcional) |
-| `OPENAI_API_KEY` | Moderación automática por IA (opcional; API gratuita) |
+| `HUGGINGFACE_API_KEY` | Moderación automática por IA (opcional; API gratuita) |
+| `MODELO_ML_URL` / `MODELO_ML_TOKEN` | Moderación automática (opcional): LLM propio en Python, ver `moderacion-ml/` |
 
 ---
 

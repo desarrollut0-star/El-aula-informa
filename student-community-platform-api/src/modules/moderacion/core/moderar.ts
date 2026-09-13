@@ -1,25 +1,10 @@
 import type { Db } from "../../../shared/db/client";
 import { filtrarTextoLocal, type ResultadoFiltro } from "./filtro-local";
 
-/**
- * Categorías de la API de moderación de OpenAI que hacen que un texto se
- * rechace de forma automática. Sexual, acoso, odio y violencia gráfica.
- * (`self-harm` NO se auto-rechaza: necesita otro trato, se deja para
- * revisión/reportes de la comunidad.)
- */
-const CATEGORIAS_BLOQUEO = [
-  "sexual",
-  "sexual/minors",
-  "harassment",
-  "harassment/threatening",
-  "hate",
-  "hate/threatening",
-  "violence",
-  "violence/graphic",
-] as const;
-
-interface RespuestaOpenAI {
-  results?: Array<{ flagged: boolean; categories: Record<string, boolean> }>;
+export interface OpcionesModeracion {
+  huggingfaceKey?: string;
+  modeloMlUrl?: string;
+  modeloMlToken?: string;
 }
 
 /**
@@ -37,17 +22,17 @@ interface RespuestaHuggingFace {
 }
 
 /**
- * Modelo tipo ML (Hugging Face Inference API) como segunda opinión además
- * del filtro local y de OpenAI. Igual que con OpenAI: si el servicio falla,
- * tarda o el modelo está "dormido" (los modelos gratuitos se descargan bajo
- * demanda), no bloqueamos — no queremos que la publicación dependa de que
- * un tercero gratuito esté disponible en ese instante.
+ * Modelo tipo ML (Hugging Face Inference API). Timeout corto y falla
+ * abierto: si el servicio falla, tarda o el modelo está "dormido" (los
+ * modelos gratuitos se descargan bajo demanda), no bloqueamos — no
+ * queremos que la publicación dependa de que un tercero gratuito esté
+ * disponible en ese instante.
  */
 async function revisarConHuggingFace(texto: string, apiKey: string): Promise<ResultadoFiltro> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const res = await fetch(`https://api-inference.huggingface.co/models/${HF_MODELO}`, {
+    const res = await fetch(`https://router.huggingface.co/hf-inference/models/${HF_MODELO}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ inputs: texto.slice(0, 2000), options: { wait_for_model: true } }),
@@ -70,48 +55,6 @@ async function revisarConHuggingFace(texto: string, apiKey: string): Promise<Res
   }
 }
 
-async function revisarConOpenAI(texto: string, apiKey: string): Promise<ResultadoFiltro> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 6000);
-  try {
-    const res = await fetch("https://api.openai.com/v1/moderations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model: "omni-moderation-latest", input: texto.slice(0, 8000) }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) return { aprobado: true }; // fallo del servicio: no bloqueamos por él
-    const data = (await res.json()) as RespuestaOpenAI;
-    const r = data.results?.[0];
-    if (!r) return { aprobado: true };
-    const hit = CATEGORIAS_BLOQUEO.find((c) => r.categories[c]);
-    if (hit) {
-      const motivo = hit.startsWith("sexual")
-        ? "contenido_sexual"
-        : hit.startsWith("hate")
-          ? "discurso_de_odio"
-          : hit.startsWith("violence")
-            ? "contenido_violento"
-            : "acoso_u_ofensa";
-      return { aprobado: false, motivo };
-    }
-    return { aprobado: true };
-  } catch {
-    // Timeout / red: no bloqueamos (el filtro local ya corrió, y quedan
-    // los reportes de la comunidad + el barrido asíncrono como respaldo).
-    return { aprobado: true };
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-export interface OpcionesModeracion {
-  openaiKey?: string;
-  huggingfaceKey?: string;
-  modeloMlUrl?: string;
-  modeloMlToken?: string;
-}
-
 interface RespuestaModeloPropio {
   ofensivo: boolean;
   motivo?: string;
@@ -121,8 +64,8 @@ interface RespuestaModeloPropio {
 /**
  * Modelo LLM propio del equipo (Python, servido aparte — ver
  * `moderacion-ml/`) entrenado/ajustado específicamente para este proyecto.
- * Mismo patrón que las otras capas: timeout corto y falla abierto (si el
- * servicio está caído o tarda, no bloqueamos la publicación por eso).
+ * Mismo patrón: timeout corto y falla abierto (si el servicio está caído o
+ * tarda, no bloqueamos la publicación por eso).
  */
 async function revisarConModeloPropio(texto: string, url: string, token?: string): Promise<ResultadoFiltro> {
   const ctrl = new AbortController();
@@ -148,28 +91,18 @@ async function revisarConModeloPropio(texto: string, url: string, token?: string
 /**
  * Moderación de texto en el alta (síncrona, antes de guardar):
  *  1. Filtro local (tabla `palabras_bloqueadas`: groserías + datos personales).
- *  2. Si hay OPENAI_API_KEY, API de moderación de OpenAI (gratuita):
- *     sexual, acoso, odio, violencia.
- *  3. Si hay HUGGINGFACE_API_KEY, un modelo ML de Hugging Face (gratuito)
- *     como segunda opinión para lenguaje tóxico/obsceno en español.
- *  4. Si hay MODELO_ML_URL, el LLM propio del equipo (`moderacion-ml/`,
- *     en Python) desplegado aparte.
+ *  2. Si hay HUGGINGFACE_API_KEY, un modelo ML de Hugging Face (gratuito)
+ *     para lenguaje tóxico/obsceno en español.
+ *  3. Si hay MODELO_ML_URL, el LLM propio del equipo (`moderacion-ml/`, en
+ *     Python) desplegado aparte.
  * Cualquiera de las capas puede rechazar el texto (basta que UNA lo
  * marque). Si algo no pasa → `{ aprobado: false, motivo }` y quien llama
  * lo rechaza.
  */
-export async function moderarTexto(
-  db: Db,
-  texto: string,
-  opts?: OpcionesModeracion,
-): Promise<ResultadoFiltro> {
+export async function moderarTexto(db: Db, texto: string, opts?: OpcionesModeracion): Promise<ResultadoFiltro> {
   const local = await filtrarTextoLocal(db, texto);
   if (!local.aprobado) return local;
 
-  if (opts?.openaiKey) {
-    const r = await revisarConOpenAI(texto, opts.openaiKey);
-    if (!r.aprobado) return r;
-  }
   if (opts?.huggingfaceKey) {
     const r = await revisarConHuggingFace(texto, opts.huggingfaceKey);
     if (!r.aprobado) return r;

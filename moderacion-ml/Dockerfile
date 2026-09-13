@@ -11,6 +11,8 @@ COPY app.py .
 # (y para que no truene si el contenedor no tiene salida a internet luego).
 RUN python -c "from pysentimiento import create_analyzer; create_analyzer(task='hate_speech', lang='es')"
 
-# Hugging Face Spaces (Docker SDK) espera el puerto 7860.
+# Render (y la mayoría de PaaS) asignan el puerto en la variable $PORT;
+# Hugging Face Spaces no la define, así que usamos 7860 como respaldo.
+# Forma "shell" del CMD (no la de lista) para que $PORT se expanda.
 EXPOSE 7860
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-7860}

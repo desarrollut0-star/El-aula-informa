@@ -59,35 +59,39 @@ peticiones con ese mismo token en el header `Authorization: Bearer …`
 podría usar el modelo — recomendado ponerlo antes de desplegar en público.
 
 Si `MODELO_ML_URL` no está definida, el backend simplemente se salta esta
-capa (igual que ya pasa con OpenAI y Hugging Face si faltan sus llaves) —
-nunca truena por no tenerla.
+capa (igual que ya pasa con Hugging Face si falta su llave) — nunca
+truena por no tenerla.
 
 ## Desplegarlo (para que funcione en producción, no solo en tu máquina)
 
-La forma más simple y gratis es un **Space de Hugging Face** con SDK
+Se despliega en **Render** (plan gratis, no pide tarjeta) como servicio
 Docker:
 
-1. Crea una cuenta en [huggingface.co](https://huggingface.co) si no
-   tienes.
-2. "New Space" → SDK: **Docker** → visibilidad pública o privada, como
-   prefieran.
-3. Sube (o conecta por git) los 3 archivos de esta carpeta: `app.py`,
-   `requirements.txt`, `Dockerfile`. (El notebook y este README no hacen
-   falta para que funcione, pero no estorban.)
-4. En el Space, ve a Settings → Variables and secrets → agrega
-   `MODELO_ML_TOKEN` con un valor secreto que inventes (una cadena
-   larga aleatoria).
-5. Espera a que compile (unos minutos la primera vez, descarga el
-   modelo). Cuando esté "Running", la URL del servicio es:
-   `https://<tu-usuario>-<nombre-del-space>.hf.space/moderar`
-6. En el backend, pon esa URL en `MODELO_ML_URL` y el mismo valor del
-   paso 4 en `MODELO_ML_TOKEN` (con `wrangler secret put` en producción).
+1. Crea una cuenta en [render.com](https://render.com) (puedes entrar con
+   tu cuenta de GitHub).
+2. **New +** → **Web Service**.
+3. Conecta el repositorio `El-aula-informa` (dale acceso si te lo pide).
+4. **Root Directory:** `moderacion-ml` (importante — si no, Render busca
+   el Dockerfile en la raíz del repo y no lo va a encontrar).
+5. **Runtime:** Render detecta el `Dockerfile` solo; si te pregunta,
+   elige **Docker**.
+6. **Instance Type:** **Free**.
+7. En **Environment Variables**, agrega `MODELO_ML_TOKEN` con un valor
+   secreto que inventes (una cadena larga aleatoria — genera una con
+   `openssl rand -hex 32` si tienes Git Bash, o cualquier generador de
+   contraseñas).
+8. **Create Web Service**. La primera vez tarda varios minutos (instala
+   `torch`, descarga el modelo). Cuando termine, Render te da una URL como
+   `https://el-aula-informa-moderacion.onrender.com`.
+9. En el backend, pon `MODELO_ML_URL="https://<esa-url>/moderar"` y el
+   mismo valor del paso 7 en `MODELO_ML_TOKEN` (con `wrangler secret put`
+   en producción).
 
-Los Spaces gratuitos "duermen" si nadie los usa un rato y tardan unos
-segundos en despertar en la siguiente petición — por eso el backend tiene
-un timeout de 8 segundos y, si no responde a tiempo, **no bloquea la
-publicación** (falla abierto, igual que las otras dos capas de
-moderación). No es crítico que este servicio esté siempre despierto.
+El plan gratis de Render "duerme" el servicio tras ~15 minutos sin
+tráfico y tarda cerca de un minuto en despertar en la siguiente petición
+— por eso el backend tiene un timeout de 8 segundos y, si no responde a
+tiempo, **no bloquea la publicación** (falla abierto, igual que la capa
+de Hugging Face). No es crítico que este servicio esté siempre despierto.
 
 ## Formato de la API
 

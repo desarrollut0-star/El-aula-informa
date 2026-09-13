@@ -21,3 +21,11 @@ export function validarQuery<T extends ZodSchema>(schema: T) {
     }
   });
 }
+
+export function validarParam<T extends ZodSchema>(schema: T) {
+  return zValidator("param", schema, (result) => {
+    if (!result.success) {
+      throw new AppError(400, "PARAMETROS_INVALIDOS", result.error.issues[0]?.message ?? "Parámetros inválidos.");
+    }
+  });
+}

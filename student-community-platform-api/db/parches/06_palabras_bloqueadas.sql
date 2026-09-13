@@ -4,10 +4,11 @@
 --
 --  POR QUÉ
 --  El filtro local (tabla palabras_bloqueadas) corre SIEMPRE, sin costo y
---  sin llamadas externas. La moderación por IA (API de OpenAI, gratuita)
---  es la segunda capa y solo corre si OPENAI_API_KEY está configurada.
---  Esta lista cubre groserías y términos sexuales frecuentes en español
---  de México para que el bloqueo funcione aunque la IA no esté activa.
+--  sin llamadas externas. Hugging Face y el LLM propio (moderacion-ml/) son
+--  capas extra y solo corren si HUGGINGFACE_API_KEY / MODELO_ML_URL están
+--  configuradas. Esta lista cubre groserías y términos sexuales frecuentes
+--  en español de México para que el bloqueo funcione aunque esas capas no
+--  estén activas.
 --
 --  Es EDITABLE sin volver a desplegar: agrega/quita filas cuando quieras.
 --  `patron` en minúsculas; el backend compara en minúsculas por substring.

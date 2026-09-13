@@ -11,7 +11,7 @@ const UMBRAL_AUTO_OCULTADO = 5;
 export class ModeracionService {
   constructor(private readonly db: Db) {}
 
-  /** Las 3 capas: filtro local + OpenAI + Hugging Face + LLM propio. */
+  /** Filtro local + Hugging Face + LLM propio (moderacion-ml/). */
   revisarTextoAutomatico(texto: string, opts?: OpcionesModeracion) {
     return moderarTexto(this.db, texto, opts);
   }

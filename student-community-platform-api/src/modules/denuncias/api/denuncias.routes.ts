@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import type { AppEnv } from "../../../env";
 import { requireRole, requireSesion } from "../../../shared/auth/middleware";
-import { validarJson } from "../../../shared/http/validate";
+import { validarJson, validarParam } from "../../../shared/http/validate";
 import { AppError } from "../../../shared/http/error";
 import { crearDenuncia } from "../application/crear-denuncia";
 import { confirmarTestigo } from "../application/confirmar-testigo";
@@ -39,7 +39,6 @@ denunciasRoutes.post("/", requireRole(), validarJson(crearSchema), async (c) => 
     esAnonimo,
     esCuentaOficial: session.esCuentaOficial,
     moderacion: {
-      openaiKey: c.env.OPENAI_API_KEY,
       huggingfaceKey: c.env.HUGGINGFACE_API_KEY,
       modeloMlUrl: c.env.MODELO_ML_URL,
       modeloMlToken: c.env.MODELO_ML_TOKEN,
@@ -48,7 +47,9 @@ denunciasRoutes.post("/", requireRole(), validarJson(crearSchema), async (c) => 
   return c.json({ id: contenido.id }, 201);
 });
 
-denunciasRoutes.post("/:id/confirmar", requireRole(), async (c) => {
+const idParamSchema = z.object({ id: z.string().uuid() });
+
+denunciasRoutes.post("/:id/confirmar", requireRole(), validarParam(idParamSchema), async (c) => {
   const session = c.get("session")!;
   const resultado = await confirmarTestigo(c.get("db"), c.req.param("id"), session.usuarioId);
   return c.json(resultado);
