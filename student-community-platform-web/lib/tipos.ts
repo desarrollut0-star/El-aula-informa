@@ -63,6 +63,15 @@ export interface TarjetaContenido {
 
 export type EstadoContenido = "visible" | "en_revision" | "oculto" | "rechazado";
 
+export interface OpcionEncuesta {
+  id: string;
+  texto: string;
+  orden: number;
+  totalVotos: number;
+  /** true si YO ya voté por esta opción. */
+  miVoto: boolean;
+}
+
 export interface MiPublicacion {
   id: string;
   tipo: TipoContenido;

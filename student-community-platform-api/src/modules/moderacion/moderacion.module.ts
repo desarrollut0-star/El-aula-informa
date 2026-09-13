@@ -15,7 +15,12 @@ export const moderacionModule: AppModule = {
      */
     async ContenidoPublicado(payload, { db, env }) {
       const servicio = new ModeracionService(db);
-      const resultado = await servicio.revisarTextoAutomatico(payload.cuerpo, env.OPENAI_API_KEY);
+      const resultado = await servicio.revisarTextoAutomatico(payload.cuerpo, {
+        openaiKey: env.OPENAI_API_KEY,
+        huggingfaceKey: env.HUGGINGFACE_API_KEY,
+        modeloMlUrl: env.MODELO_ML_URL,
+        modeloMlToken: env.MODELO_ML_TOKEN,
+      });
       if (resultado.aprobado) return;
       await servicio.registrarAccion(
         payload.contenidoId,

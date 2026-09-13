@@ -38,7 +38,12 @@ denunciasRoutes.post("/", requireRole(), validarJson(crearSchema), async (c) => 
     texto,
     esAnonimo,
     esCuentaOficial: session.esCuentaOficial,
-    openaiKey: c.env.OPENAI_API_KEY,
+    moderacion: {
+      openaiKey: c.env.OPENAI_API_KEY,
+      huggingfaceKey: c.env.HUGGINGFACE_API_KEY,
+      modeloMlUrl: c.env.MODELO_ML_URL,
+      modeloMlToken: c.env.MODELO_ML_TOKEN,
+    },
   });
   return c.json({ id: contenido.id }, 201);
 });

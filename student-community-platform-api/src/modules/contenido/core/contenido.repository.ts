@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, isNull, notExists, sql } from "drizzle-orm";
 import type { Db } from "../../../shared/db/client";
 import { programas, usuarios } from "../../identidad/schema";
-import { comentarios, contenidos, reacciones, vistaMuro } from "../schema";
+import { comentarios, contenidos, encuestaOpciones, encuestaVotos, reacciones, vistaMuro } from "../schema";
 import type { TipoContenido } from "./contenido.types";
 
 /**
@@ -270,6 +270,64 @@ export class ContenidoRepository {
       .where(and(eq(comentarios.id, id), eq(comentarios.autorId, autorId), isNull(comentarios.eliminadoEn)))
       .returning({ id: comentarios.id });
     return filas.length > 0;
+  }
+
+  // ---------- encuestas ----------
+
+  /** Crea la tarjeta tipo `encuesta` y sus opciones en una sola transacción. */
+  async crearEncuesta(input: {
+    autorId: string;
+    programaId: string | null;
+    titulo: string | null;
+    cuerpo: string;
+    esAnonimo: boolean;
+    cierraEn: Date;
+    opciones: string[];
+  }) {
+    return this.db.transaction(async (tx) => {
+      const [fila] = await tx
+        .insert(contenidos)
+        .values({
+          tipo: "encuesta",
+          autorId: input.autorId,
+          programaId: input.programaId,
+          titulo: input.titulo,
+          cuerpo: input.cuerpo,
+          esAnonimo: input.esAnonimo,
+          cierraEn: input.cierraEn,
+        })
+        .returning();
+      await tx.insert(encuestaOpciones).values(
+        input.opciones.map((texto, i) => ({ contenidoId: fila.id, texto, orden: i + 1 })),
+      );
+      return fila;
+    });
+  }
+
+  /** Opciones con su conteo y si este usuario ya votó por cada una. */
+  async opciones(contenidoId: string, usuarioId: string) {
+    return this.db
+      .select({
+        id: encuestaOpciones.id,
+        texto: encuestaOpciones.texto,
+        orden: encuestaOpciones.orden,
+        totalVotos: encuestaOpciones.totalVotos,
+        miVoto: sql<boolean>`exists(
+          select 1 from encuesta_votos v
+          where v.opcion_id = ${encuestaOpciones.id} and v.usuario_id = ${usuarioId}
+        )`,
+      })
+      .from(encuestaOpciones)
+      .where(eq(encuestaOpciones.contenidoId, contenidoId))
+      .orderBy(asc(encuestaOpciones.orden));
+  }
+
+  /** Votar (o cambiar de opción mientras la encuesta siga abierta). El trigger ajusta los conteos. */
+  async votar(contenidoId: string, usuarioId: string, opcionId: string) {
+    await this.db
+      .insert(encuestaVotos)
+      .values({ contenidoId, usuarioId, opcionId })
+      .onConflictDoUpdate({ target: [encuestaVotos.contenidoId, encuestaVotos.usuarioId], set: { opcionId } });
   }
 
   async ocultar(contenidoId: string) {

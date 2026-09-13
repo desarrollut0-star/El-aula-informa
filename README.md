@@ -3,12 +3,13 @@
 Plataforma de participación y auditoría estudiantil de la Universidad
 Tecnológica de la Huasteca Hidalguense.
 
-Este repositorio contiene **dos aplicaciones independientes**:
+Este repositorio contiene **tres aplicaciones independientes**:
 
 | Carpeta | Qué es | Dónde se despliega |
 |---|---|---|
 | [`student-community-platform-api/`](student-community-platform-api/) | Backend — Hono (monolito modular) | Cloudflare Workers |
 | [`student-community-platform-web/`](student-community-platform-web/) | Frontend — Next.js (App Router) | Vercel |
+| [`moderacion-ml/`](moderacion-ml/) | Modelo propio de moderación — Python (FastAPI) | Hugging Face Spaces |
 
 La base de datos (PostgreSQL) vive en Supabase y la administra el SQL de
 `student-community-platform-api/db/`.

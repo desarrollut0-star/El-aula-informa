@@ -1,5 +1,6 @@
 # ─────────────────────────────────────────────────────────────
-#  El Aula Informa — repositorio: solo backend y frontend
+#  El Aula Informa — repositorio: backend, frontend y el
+#  servicio de moderación en Python (moderacion-ml/)
 # ─────────────────────────────────────────────────────────────
 
 # Material y documentación del proyecto — NO se suben
@@ -36,6 +37,13 @@ next-env.d.ts
 .env.local.example
 .env.production
 .env.development
+
+# Python (moderacion-ml/)
+moderacion-ml/venv/
+moderacion-ml/.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
 
 # Sistema / editor
 *.log

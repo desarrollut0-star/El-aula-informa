@@ -12,6 +12,7 @@ import { Boton } from "@/components/ui/Boton";
 import { Colapsable } from "@/components/ui/Colapsable";
 import { Icono, type NombreIcono } from "@/components/ui/Iconos";
 import { PerfilHoverCard } from "./PerfilHoverCard";
+import { EncuestaOpciones } from "./EncuestaOpciones";
 
 export const ESTILO: Record<TipoContenido, { icono: NombreIcono; etiqueta: string; barra: string; chip: string }> = {
   testimonio: { icono: "cita", etiqueta: "Testimonio", barra: "before:bg-verde", chip: "bg-verde-tenue text-verde-oscuro" },
@@ -302,6 +303,10 @@ export function TarjetaContenido({
             </p>
           )}
         </>
+      )}
+
+      {tarjeta.tipo === "encuesta" && !editando && (
+        <EncuestaOpciones contenidoId={tarjeta.id} cerrada={tarjeta.encuestaCerrada} />
       )}
 
       {(tarjeta.fechaEvento || tarjeta.lugar) && (

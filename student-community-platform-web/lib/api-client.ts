@@ -4,6 +4,7 @@ import type {
   Comentario,
   MiPublicacion,
   Notificacion,
+  OpcionEncuesta,
   Programa,
   Sesion,
   TarjetaContenido,
@@ -115,6 +116,23 @@ export const api = {
     pedir<{ registrado: boolean }>("/contenido/reacciones", {
       method: "POST",
       body: JSON.stringify({ contenidoId, aFavor }),
+    }),
+
+  // ---------- encuestas ----------
+  publicarEncuesta: (input: {
+    titulo?: string;
+    cuerpo: string;
+    esAnonimo?: boolean;
+    /** ISO 8601. */
+    cierraEn: string;
+    opciones: string[];
+  }) => pedir<TarjetaContenido>("/contenido/encuestas", { method: "POST", body: JSON.stringify(input) }),
+  opcionesEncuesta: (contenidoId: string) =>
+    pedir<{ opciones: OpcionEncuesta[] }>(`/contenido/${contenidoId}/opciones`),
+  votar: (contenidoId: string, opcionId: string) =>
+    pedir<{ opciones: OpcionEncuesta[] }>(`/contenido/${contenidoId}/votar`, {
+      method: "POST",
+      body: JSON.stringify({ opcionId }),
     }),
 
   // ---------- firmas ----------
